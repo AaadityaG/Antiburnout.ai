@@ -27,22 +27,28 @@ function App() {
   // Handle timer updates from main process
   useEffect(() => {
     if (window.electronAPI) {
+      console.log('Setting up IPC listeners')
+      
       window.electronAPI.onTimerUpdate((_event: any, time: number) => {
+        console.log('Timer update received:', time)
         setTimeRemaining(time)
       })
 
       window.electronAPI.onTimerReset(() => {
+        console.log('Timer reset received')
         setTimeRemaining(initialTime)
         setIsPaused(false)
       })
 
       window.electronAPI.onBreakTime((_event: any, data: any) => {
+        console.log('Break time received:', data)
         if (data.duration) setBreakDuration(data.duration)
         setBreakTimeLeft(data.duration)
         setIsBreakActive(true)
       })
 
       window.electronAPI.onSettingsUpdated((_event: any, data: any) => {
+        console.log('Settings updated:', data)
         setInitialTime(data.interval * 60 * 1000)
         setBreakDuration(data.duration)
         setTimeRemaining(data.interval * 60 * 1000)
@@ -95,11 +101,13 @@ function App() {
   }, [])
 
   const minimizeToTray = useCallback(() => {
+    console.log('Minimize to tray clicked')
     window.electronAPI?.sendMinimizeToTray()
   }, [])
 
   const saveSettings = useCallback(() => {
     if (intervalInput >= 1 && durationInput >= 5) {
+      console.log('Saving settings:', { interval: intervalInput, duration: durationInput, autoStart })
       window.electronAPI?.sendUpdateTimerSetting({
         interval: intervalInput,
         duration: durationInput,

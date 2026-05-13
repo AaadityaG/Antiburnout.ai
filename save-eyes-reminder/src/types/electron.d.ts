@@ -1,7 +1,5 @@
 export interface ElectronAPI {
   getAppVersion: () => Promise<string>
-  onPauseTimer: (callback: () => void) => void
-  onResumeTimer: (callback: () => void) => void
   onTimerUpdate: (callback: (event: any, time: number) => void) => void
   onTimerReset: (callback: () => void) => void
   onBreakTime: (callback: (event: any, data: any) => void) => void

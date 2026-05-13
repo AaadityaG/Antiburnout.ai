@@ -107,10 +107,11 @@ function createWindow() {
   })
 
   mainWindow.on('close', (e) => {
-    if (!isQuitting && process.platform !== 'darwin') {
+    if (!isQuitting) {
       e.preventDefault()
       mainWindow?.hide()
       isMinimized = true
+      return false
     }
   })
 
@@ -188,6 +189,8 @@ function startBreakTimer() {
   if (breakTimer) {
     clearInterval(breakTimer)
   }
+
+  console.log('Starting timer with initialTime:', initialTime)
 
   breakTimer = setInterval(() => {
     if (!isPaused) {
@@ -268,6 +271,7 @@ ipcMain.on('timer-break-complete', () => {
 })
 
 ipcMain.on('update-timer-setting', (event, { interval, duration, autoStart: newAutoStart }) => {
+  console.log('Updating settings:', { interval, duration, autoStart: newAutoStart })
   initialTime = interval * 60 * 1000
   timeRemaining = initialTime
   breakDuration = duration
@@ -281,9 +285,11 @@ ipcMain.on('update-timer-setting', (event, { interval, duration, autoStart: newA
 })
 
 ipcMain.on('minimize-to-tray', () => {
+  console.log('Minimize to tray called')
   if (mainWindow) {
     mainWindow.hide()
     isMinimized = true
+    console.log('Window hidden, isMinimized:', isMinimized)
   }
 })
 
