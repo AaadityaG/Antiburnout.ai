@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import './App.css'
 
 function App() {
@@ -12,6 +12,7 @@ function App() {
   const [breakTimeLeft, setBreakTimeLeft] = useState(20)
   const [intervalInput, setIntervalInput] = useState(30)
   const [durationInput, setDurationInput] = useState(20)
+  const initialTimeRef = useRef(initialTime)
 
   // Format time as MM:SS
   const formatTime = (ms: number): string => {
@@ -24,38 +25,50 @@ function App() {
   // Calculate progress percentage
   const progress = ((initialTime - timeRemaining) / initialTime) * 100
 
-  // Handle timer updates from main process
+  // Update ref when initialTime changes
   useEffect(() => {
-    if (window.electronAPI) {
-      console.log('Setting up IPC listeners')
-      
-      window.electronAPI.onTimerUpdate((_event: any, time: number) => {
-        console.log('Timer update received:', time)
-        setTimeRemaining(time)
-      })
-
-      window.electronAPI.onTimerReset(() => {
-        console.log('Timer reset received')
-        setTimeRemaining(initialTime)
-        setIsPaused(false)
-      })
-
-      window.electronAPI.onBreakTime((_event: any, data: any) => {
-        console.log('Break time received:', data)
-        if (data.duration) setBreakDuration(data.duration)
-        setBreakTimeLeft(data.duration)
-        setIsBreakActive(true)
-      })
-
-      window.electronAPI.onSettingsUpdated((_event: any, data: any) => {
-        console.log('Settings updated:', data)
-        setInitialTime(data.interval * 60 * 1000)
-        setBreakDuration(data.duration)
-        setTimeRemaining(data.interval * 60 * 1000)
-        if (data.autoStart !== undefined) setAutoStart(data.autoStart)
-      })
-    }
+    initialTimeRef.current = initialTime
   }, [initialTime])
+
+  // Handle timer updates from main process - setup only once
+  useEffect(() => {
+    console.log('electronAPI available:', !!window.electronAPI)
+    
+    if (!window.electronAPI) {
+      console.error('electronAPI not available!')
+      return
+    }
+
+    console.log('Setting up IPC listeners')
+    
+    window.electronAPI.onTimerUpdate((_event: any, time: number) => {
+      console.log('Timer update received:', time)
+      setTimeRemaining(time)
+    })
+
+    window.electronAPI.onTimerReset(() => {
+      console.log('Timer reset received')
+      setTimeRemaining(initialTimeRef.current)
+      setIsPaused(false)
+    })
+
+    window.electronAPI.onBreakTime((_event: any, data: any) => {
+      console.log('Break time received:', data)
+      if (data.duration) setBreakDuration(data.duration)
+      setBreakTimeLeft(data.duration)
+      setIsBreakActive(true)
+    })
+
+    window.electronAPI.onSettingsUpdated((_event: any, data: any) => {
+      console.log('Settings updated:', data)
+      setInitialTime(data.interval * 60 * 1000)
+      setBreakDuration(data.duration)
+      setTimeRemaining(data.interval * 60 * 1000)
+      if (data.autoStart !== undefined) setAutoStart(data.autoStart)
+    })
+    
+    console.log('IPC listeners setup complete')
+  }, [])
 
   // Break timer countdown
   useEffect(() => {
@@ -131,6 +144,12 @@ function App() {
         <div className="win-dot" onClick={minimizeToTray}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </div>
+        <div className="win-dot close" onClick={() => window.electronAPI?.sendQuitApp()}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </div>
       </div>

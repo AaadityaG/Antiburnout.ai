@@ -1,11 +1,8 @@
 import { app, BrowserWindow, Tray, Menu, ipcMain } from 'electron'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import fs from 'fs'
 import AutoLaunch from 'auto-launch'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+// __dirname and __filename are available as globals in CommonJS
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -80,7 +77,7 @@ function createWindow() {
     frame: false,
     icon: iconPath,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
     },

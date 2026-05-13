@@ -2,18 +2,19 @@
   "name": "save-eyes-reminder",
   "private": true,
   "version": "0.0.0",
-  "main": "electron-dist/main.js",
+  "main": "electron-dist/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "tsc -p tsconfig.electron.json && vite build && cross-env NODE_ENV=production electron-builder",
-    "electron:build:win": "tsc -p tsconfig.electron.json && vite build && cross-env NODE_ENV=production electron-builder --win",
-    "electron:build:mac": "tsc -p tsconfig.electron.json && vite build && cross-env NODE_ENV=production electron-builder --mac",
-    "electron:build:linux": "tsc -p tsconfig.electron.json && vite build && cross-env NODE_ENV=production electron-builder --linux"
+    "electron:compile": "tsc -p tsconfig.electron.json; node rename-electron.mjs",
+    "electron:dev": "npm run electron:compile && concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
+    "electron:build": "npm run electron:compile && vite build && cross-env NODE_ENV=production electron-builder",
+    "electron:build:win": "npm run electron:compile && vite build && cross-env NODE_ENV=production electron-builder --win",
+    "electron:build:mac": "npm run electron:compile && vite build && cross-env NODE_ENV=production electron-builder --mac",
+    "electron:build:linux": "npm run electron:compile && vite build && cross-env NODE_ENV=production electron-builder --linux"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",

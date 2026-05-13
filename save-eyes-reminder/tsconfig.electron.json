@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "CommonJS",
+    "moduleResolution": "node10",
+    "ignoreDeprecations": "6.0",
     "outDir": "electron-dist",
     "rootDir": "electron",
     "strict": true,
