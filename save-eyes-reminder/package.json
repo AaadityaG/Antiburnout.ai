@@ -1,0 +1,66 @@
+{
+  "name": "save-eyes-reminder",
+  "private": true,
+  "version": "0.0.0",
+  "main": "electron-dist/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
+    "electron:build": "tsc -p tsconfig.electron.json && vite build && cross-env NODE_ENV=production electron-builder",
+    "electron:build:win": "tsc -p tsconfig.electron.json && vite build && cross-env NODE_ENV=production electron-builder --win",
+    "electron:build:mac": "tsc -p tsconfig.electron.json && vite build && cross-env NODE_ENV=production electron-builder --mac",
+    "electron:build:linux": "tsc -p tsconfig.electron.json && vite build && cross-env NODE_ENV=production electron-builder --linux"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tailwindcss": "^4.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.12.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.1.2",
+    "cross-env": "^10.0.0",
+    "electron": "^38.3.0",
+    "electron-builder": "^26.0.12",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.save-eyes-reminder.app",
+    "productName": "Save Eyes Reminder",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron-dist/**/*"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "build/icon.icns"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "build/icon.png"
+    }
+  }
+}
