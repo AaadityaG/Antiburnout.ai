@@ -117,6 +117,29 @@ function createWindow() {
   })
 }
 
+function quitApp() {
+  isQuitting = true
+  saveConfig()
+  
+  if (breakTimer) {
+    clearInterval(breakTimer)
+    breakTimer = null
+  }
+  
+  if (mainWindow) {
+    mainWindow.removeAllListeners('close')
+    mainWindow.destroy()
+    mainWindow = null
+  }
+  
+  if (tray) {
+    tray.destroy()
+    tray = null
+  }
+  
+  app.quit()
+}
+
 function createTray() {
   const iconPath = path.join(__dirname, '../public/icon.png')
   
@@ -148,26 +171,7 @@ function createTray() {
     {
       label: 'Exit',
       click: () => {
-        isQuitting = true
-        saveConfig()
-        
-        if (breakTimer) {
-          clearInterval(breakTimer)
-          breakTimer = null
-        }
-        
-        if (mainWindow) {
-          mainWindow.removeAllListeners('close')
-          mainWindow.destroy()
-          mainWindow = null
-        }
-        
-        if (tray) {
-          tray.destroy()
-          tray = null
-        }
-        
-        app.quit()
+        quitApp()
       },
     },
   ])
@@ -291,26 +295,7 @@ ipcMain.on('minimize-to-tray', () => {
 })
 
 ipcMain.on('quit-app', () => {
-  isQuitting = true
-  saveConfig()
-  
-  if (breakTimer) {
-    clearInterval(breakTimer)
-    breakTimer = null
-  }
-  
-  if (mainWindow) {
-    mainWindow.removeAllListeners('close')
-    mainWindow.destroy()
-    mainWindow = null
-  }
-  
-  if (tray) {
-    tray.destroy()
-    tray = null
-  }
-  
-  app.quit()
+  quitApp()
 })
 
 app.whenReady().then(() => {

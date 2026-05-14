@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './App.css'
 
 function App() {
@@ -12,7 +12,6 @@ function App() {
   const [breakTimeLeft, setBreakTimeLeft] = useState(20)
   const [intervalInput, setIntervalInput] = useState(30)
   const [durationInput, setDurationInput] = useState(20)
-  const initialTimeRef = useRef(initialTime)
 
   // Format time as MM:SS
   const formatTime = (ms: number): string => {
@@ -25,49 +24,43 @@ function App() {
   // Calculate progress percentage
   const progress = ((initialTime - timeRemaining) / initialTime) * 100
 
-  // Update ref when initialTime changes
+  // Handle timer updates from main process
   useEffect(() => {
-    initialTimeRef.current = initialTime
-  }, [initialTime])
-
-  // Handle timer updates from main process - setup only once
-  useEffect(() => {
-    console.log('electronAPI available:', !!window.electronAPI)
-    
     if (!window.electronAPI) {
       console.error('electronAPI not available!')
       return
     }
 
-    console.log('Setting up IPC listeners')
-    
-    window.electronAPI.onTimerUpdate((_event: any, time: number) => {
-      console.log('Timer update received:', time)
+    // Setup IPC listeners and store cleanup functions
+    const cleanupTimerUpdate = window.electronAPI.onTimerUpdate((time) => {
       setTimeRemaining(time)
     })
 
-    window.electronAPI.onTimerReset(() => {
-      console.log('Timer reset received')
-      setTimeRemaining(initialTimeRef.current)
+    const cleanupTimerReset = window.electronAPI.onTimerReset(() => {
+      setTimeRemaining(initialTime)
       setIsPaused(false)
     })
 
-    window.electronAPI.onBreakTime((_event: any, data: any) => {
-      console.log('Break time received:', data)
+    const cleanupBreakTime = window.electronAPI.onBreakTime((data) => {
       if (data.duration) setBreakDuration(data.duration)
       setBreakTimeLeft(data.duration)
       setIsBreakActive(true)
     })
 
-    window.electronAPI.onSettingsUpdated((_event: any, data: any) => {
-      console.log('Settings updated:', data)
+    const cleanupSettingsUpdated = window.electronAPI.onSettingsUpdated((data) => {
       setInitialTime(data.interval * 60 * 1000)
       setBreakDuration(data.duration)
       setTimeRemaining(data.interval * 60 * 1000)
       if (data.autoStart !== undefined) setAutoStart(data.autoStart)
     })
     
-    console.log('IPC listeners setup complete')
+    // Cleanup IPC listeners on unmount
+    return () => {
+      cleanupTimerUpdate()
+      cleanupTimerReset()
+      cleanupBreakTime()
+      cleanupSettingsUpdated()
+    }
   }, [])
 
   // Break timer countdown
@@ -114,13 +107,11 @@ function App() {
   }, [])
 
   const minimizeToTray = useCallback(() => {
-    console.log('Minimize to tray clicked')
     window.electronAPI?.sendMinimizeToTray()
   }, [])
 
   const saveSettings = useCallback(() => {
     if (intervalInput >= 1 && durationInput >= 5) {
-      console.log('Saving settings:', { interval: intervalInput, duration: durationInput, autoStart })
       window.electronAPI?.sendUpdateTimerSetting({
         interval: intervalInput,
         duration: durationInput,
