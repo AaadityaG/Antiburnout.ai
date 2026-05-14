@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:compile": "tsc -p tsconfig.electron.json; node rename-electron.mjs",
+    "electron:compile": "tsc -p tsconfig.electron.json && node rename-electron.mjs",
     "electron:watch": "concurrently \"tsc -p tsconfig.electron.json --watch\" \"node rename-electron.mjs --watch\"",
     "electron:dev": "npm run electron:compile && concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
     "electron:dev:watch": "concurrently \"npm run electron:watch\" \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
