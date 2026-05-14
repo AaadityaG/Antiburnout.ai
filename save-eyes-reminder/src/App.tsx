@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import './App.css'
+import axios from 'axios'
+import LoginModal from './components/LoginModal'
+
+const API_URL = 'http://localhost:8000'
 
 function App() {
   const [timeRemaining, setTimeRemaining] = useState(30 * 60 * 1000)
@@ -8,10 +12,25 @@ function App() {
   const [isPaused, setIsPaused] = useState(false)
   const [isBreakActive, setIsBreakActive] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [autoStart, setAutoStart] = useState(true)
   const [breakTimeLeft, setBreakTimeLeft] = useState(20)
   const [intervalInput, setIntervalInput] = useState(30)
   const [durationInput, setDurationInput] = useState(20)
+  
+  // Auth state
+  const [user, setUser] = useState<any>(null)
+  const [token, setToken] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  
+  // Premium features state
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false)
+  
+  // Profile form
+  const [profileName, setProfileName] = useState('')
+  const [profileEmail, setProfileEmail] = useState('')
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
 
   // Format time as MM:SS
   const formatTime = (ms: number): string => {
@@ -20,6 +39,24 @@ function App() {
     const secs = totalSeconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
+
+  // Check for existing session on app start
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token')
+    const savedUser = localStorage.getItem('user')
+    const savedDeviceId = localStorage.getItem('device_id')
+    
+    // If we have all data, mark as authenticated
+    if (savedToken && savedUser && savedDeviceId) {
+      setToken(savedToken)
+      setUser(JSON.parse(savedUser))
+      const userData = JSON.parse(savedUser)
+      setProfileName(userData.name || '')
+      setProfileEmail(userData.email || '')
+      setIsAuthenticated(true)
+    }
+    // App always loads, authentication is optional for premium features
+  }, [])
 
   // Calculate progress percentage
   const progress = ((initialTime - timeRemaining) / initialTime) * 100
@@ -125,6 +162,75 @@ function App() {
     setAutoStart(!autoStart)
   }, [autoStart])
 
+  const openProfile = useCallback(() => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true)
+    } else {
+      setProfileName(user.name || '')
+      setProfileEmail(user.email || '')
+      setIsProfileOpen(true)
+    }
+  }, [isAuthenticated, user])
+
+  const saveProfile = useCallback(async () => {
+    if (!token) return
+    
+    setIsSavingProfile(true)
+    try {
+      const response = await axios.put(`${API_URL}/auth/profile`, {
+        name: profileName,
+        email: profileEmail,
+      }, {
+        params: { token }
+      })
+
+      const updatedUser = response.data
+      setUser(updatedUser)
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+      setIsProfileOpen(false)
+    } catch (error) {
+      console.error('Failed to save profile:', error)
+      alert('Failed to save profile. Please try again.')
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }, [token, profileName, profileEmail])
+
+  const logout = useCallback(() => {
+    // Clear all stored data
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    localStorage.removeItem('device_id')
+    
+    // Reset state
+    setUser(null)
+    setToken(null)
+    setProfileName('')
+    setProfileEmail('')
+    setIsProfileOpen(false)
+    setIsAuthenticated(false)
+  }, [])
+
+  const handleLoginSuccess = useCallback((userData: any, accessToken: string) => {
+    setToken(accessToken)
+    setUser(userData)
+    localStorage.setItem('token', accessToken)
+    localStorage.setItem('user', JSON.stringify(userData))
+    
+    setProfileName(userData.name || '')
+    setProfileEmail(userData.email || '')
+    setIsAuthenticated(true)
+    setShowLoginModal(false)
+  }, [])
+
+  const openInsights = useCallback(() => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true)
+    } else {
+      setIsInsightsOpen(true)
+    }
+  }, [isAuthenticated])
+
   return (
     <>
       <div className="drag-area"></div>
@@ -204,6 +310,20 @@ function App() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"/>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+
+          <button className="action-btn" onClick={openProfile} title="Profile">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </button>
+
+          <button className="action-btn" onClick={openInsights} title="Insights">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+              <path d="M22 12A10 10 0 0 0 12 2v10z"/>
             </svg>
           </button>
         </div>
@@ -304,6 +424,134 @@ function App() {
           <button className="action-btn primary" onClick={completeBreak} style={{ margin: '0 auto', width: '240px', height: '64px' }}>
             I'm Refreshed
           </button>
+        </div>
+      </div>
+
+      {/* Login Modal Component */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
+
+      {/* Insights Overlay (Premium Feature) */}
+      <div className={`settings-overlay ${isInsightsOpen ? 'active' : ''}`} id="insights-view">
+        <div className="settings-content">
+          <h2 className="settings-header">Insights</h2>
+          
+          <div style={{
+            padding: '30px',
+            textAlign: 'center',
+            color: '#88a088',
+          }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>📊</div>
+            <h3 style={{ color: 'white', marginBottom: '10px' }}>Usage Analytics</h3>
+            <p>Track your break patterns and eye health trends</p>
+            <p style={{ marginTop: '20px', fontSize: '13px' }}>Coming Soon...</p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', marginTop: '40px' }}>
+            <button 
+              className="action-btn" 
+              onClick={() => setIsInsightsOpen(false)} 
+              style={{ width: '60px', height: '60px' }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Profile Overlay */}
+      <div className={`settings-overlay ${isProfileOpen ? 'active' : ''}`} id="profile-view">
+        <div className="settings-content">
+          <h2 className="settings-header">User Profile</h2>
+          
+          <div style={{
+            padding: '20px',
+            background: 'rgba(74, 222, 128, 0.1)',
+            border: '1px solid rgba(74, 222, 128, 0.3)',
+            borderRadius: '16px',
+            marginBottom: '30px',
+          }}>
+            <p style={{ color: '#4ade80', margin: '0 0 10px 0', fontSize: '14px' }}>✓ Device Authenticated</p>
+            <p style={{ color: '#88a088', margin: 0, fontSize: '12px', wordBreak: 'break-all' }}>
+              Device ID: {user?.device_id}
+            </p>
+          </div>
+          
+          <div className="form-group">
+            <label className="label">Name (Optional)</label>
+            <input 
+              type="text" 
+              className="input" 
+              value={profileName}
+              onChange={(e) => setProfileName(e.target.value)}
+              placeholder="Enter your name"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="label">Email (Optional)</label>
+            <input 
+              type="email" 
+              className="input" 
+              value={profileEmail}
+              onChange={(e) => setProfileEmail(e.target.value)}
+              placeholder="Enter your email"
+            />
+          </div>
+
+          <p style={{ color: '#88a088', fontSize: '13px', marginTop: '20px' }}>
+            Adding your name and email helps you identify your profile across devices.
+          </p>
+
+          <div style={{ display: 'flex', gap: '16px', marginTop: '40px' }}>
+            <button 
+              className="action-btn primary" 
+              onClick={saveProfile} 
+              disabled={isSavingProfile}
+              style={{ flex: 1, height: '60px' }}
+            >
+              {isSavingProfile ? 'Saving...' : 'Save Profile'}
+            </button>
+            <button 
+              className="action-btn" 
+              onClick={() => setIsProfileOpen(false)} 
+              style={{ width: '60px', height: '60px' }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <button 
+              onClick={logout}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: 'rgba(244, 67, 54, 0.1)',
+                border: '1px solid rgba(244, 67, 54, 0.3)',
+                borderRadius: '12px',
+                color: '#f44336',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(244, 67, 54, 0.2)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(244, 67, 54, 0.1)'
+              }}
+            >
+              Logout
+            </button>
+            <p style={{ color: '#88a088', fontSize: '12px', marginTop: '10px', textAlign: 'center' }}>
+              You'll need to login again to use the app
+            </p>
+          </div>
         </div>
       </div>
     </>
