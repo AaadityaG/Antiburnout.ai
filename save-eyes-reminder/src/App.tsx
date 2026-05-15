@@ -18,6 +18,7 @@ function App() {
   const [breakTimeLeft, setBreakTimeLeft] = useState(20)
   const [intervalInput, setIntervalInput] = useState(30)
   const [durationInput, setDurationInput] = useState(20)
+  const [autoStartInput, setAutoStartInput] = useState(true)
   
   // Redux state
   const dispatch = useDispatch<AppDispatch>()
@@ -53,6 +54,13 @@ function App() {
       dispatch(fetchSettings(token))
     }
   }, [isAuthenticated, token, dispatch])
+
+  // Sync Redux settings to input states
+  useEffect(() => {
+    setIntervalInput(breakInterval)
+    setDurationInput(breakDuration)
+    setAutoStartInput(autoStart)
+  }, [breakInterval, breakDuration, autoStart])
 
   // Calculate progress percentage
   const initialTime = breakInterval * 60 * 1000
@@ -146,7 +154,7 @@ function App() {
       window.electronAPI?.sendUpdateTimerSetting({
         interval: intervalInput,
         duration: durationInput,
-        autoStart,
+        autoStart: autoStartInput,
       })
       
       // Update backend if authenticated
@@ -156,17 +164,17 @@ function App() {
           settings: {
             break_interval: intervalInput,
             break_duration: durationInput,
-            auto_start: autoStart
+            auto_start: autoStartInput
           }
         }))
       }
       
       setIsSettingsOpen(false)
     }
-  }, [intervalInput, durationInput, autoStart, token, dispatch])
+  }, [intervalInput, durationInput, autoStartInput, token, dispatch])
 
   const toggleAutoStart = useCallback(() => {
-    // Will be handled when saving settings
+    setAutoStartInput(prev => !prev)
   }, [])
 
   const openProfile = useCallback(() => {
@@ -369,7 +377,7 @@ function App() {
                   width: '52px', 
                   height: '28px', 
                   borderRadius: '14px', 
-                  background: autoStart ? '#4ade80' : 'rgba(255,255,255,0.2)', 
+                  background: autoStartInput ? '#4ade80' : 'rgba(255,255,255,0.2)', 
                   position: 'relative', 
                   transition: 'all 0.3s ease',
                 }}
@@ -383,7 +391,7 @@ function App() {
                     background: 'white', 
                     position: 'absolute', 
                     top: '3px', 
-                    [autoStart ? 'right' : 'left']: '3px',
+                    [autoStartInput ? 'right' : 'left']: '3px',
                     transition: 'all 0.3s ease', 
                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                   }}
