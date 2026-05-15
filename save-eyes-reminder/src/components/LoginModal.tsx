@@ -76,7 +76,7 @@ function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
           ) : (
             <button
               onClick={handleLogin}
-              className="w-full h-[70px] bg-white text-bg-dark text-lg font-bold rounded-2xl hover:bg-accent transition-all duration-300 shadow-xl active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer"
+              className="w-full h-[70px] rounded-full bg-glass glass-blur border border-white/20 text-white text-lg font-medium hover:bg-accent hover:text-primary transition-all duration-300 shadow-xl active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer"
             >
               <span>🔐</span> Login with Device
             </button>

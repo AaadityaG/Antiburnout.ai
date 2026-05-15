@@ -48,16 +48,16 @@ function ConfirmDialog({
         
         <div className="flex gap-3">
           <button
-            className="flex-1 h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-medium transition-all cursor-pointer"
+            className="flex-1 h-12 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-white/10 transition-all duration-300 cursor-pointer"
             onClick={onCancel}
           >
             {cancelText}
           </button>
           <button
-            className={`flex-1 h-12 rounded-xl font-medium transition-all cursor-pointer ${
+            className={`flex-1 h-12 rounded-full font-medium transition-all duration-300 cursor-pointer ${
               confirmVariant === 'danger'
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : 'bg-white hover:bg-accent text-bg-dark'
+                ? 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300'
+                : 'bg-glass glass-blur border border-white/20 text-white hover:bg-accent hover:text-primary'
             }`}
             onClick={onConfirm}
           >

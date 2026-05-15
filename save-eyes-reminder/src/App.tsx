@@ -4,15 +4,14 @@ import { fetchSettings, updateSettings } from './store/settingsSlice'
 import type { RootState, AppDispatch } from './store'
 import ProfileOverlay from './components/ProfileOverlay'
 import LoginModal from './components/LoginModal'
-import Toast, { useToast } from './components/Toast'
+import SettingsOverlay from './components/SettingsOverlay'
+import InsightsOverlay from './components/InsightsOverlay'
+import BreakView from './components/BreakView'
 
 function App() {
   const dispatch = useDispatch<AppDispatch>()
   const { isAuthenticated, token } = useSelector((state: RootState) => state.auth)
   const settings = useSelector((state: RootState) => state.settings)
-
-  // Toast notifications
-  const { toasts, removeToast } = useToast()
 
   const [timeRemaining, setTimeRemaining] = useState(settings.breakInterval * 60 * 1000)
   const [isPaused, setIsPaused] = useState(false)
@@ -21,10 +20,6 @@ function App() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
-
-  // Local state for settings inputs
-  const [localInterval, setLocalInterval] = useState(settings.breakInterval)
-  const [localDuration, setLocalDuration] = useState(settings.breakDuration)
 
   // Fetch user settings when authenticated
   useEffect(() => {
@@ -37,27 +32,24 @@ function App() {
   useEffect(() => {
     setTimeRemaining(settings.breakInterval * 60 * 1000)
     setBreakTimeLeft(settings.breakDuration)
-    setLocalInterval(settings.breakInterval)
-    setLocalDuration(settings.breakDuration)
   }, [settings])
 
-  const handleApplySettings = useCallback(() => {
+  const handleApplySettings = useCallback((interval: number, duration: number) => {
     dispatch(updateSettings({
       token: token || '', 
       settings: { 
-        break_interval: localInterval,
-        break_duration: localDuration,
+        break_interval: interval,
+        break_duration: duration,
         auto_start: true
       }
     }))
     // Also notify Electron if needed
     window.electronAPI?.sendUpdateTimerSetting({
-      interval: localInterval,
-      duration: localDuration,
+      interval,
+      duration,
       autoStart: true
     })
-    setIsSettingsOpen(false)
-  }, [token, localInterval, localDuration, dispatch])
+  }, [token, dispatch])
 
   // Format time as MM:SS
   const formatTime = (ms: number): string => {
@@ -200,72 +192,29 @@ function App() {
       </main>
 
       {/* Settings Overlay */}
-      <div className={`fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 ${isSettingsOpen ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-105'}`}>
-        <div className="w-full max-w-[500px] bg-glass-heavy border border-white/10 rounded-[32px] p-10 shadow-2xl">
-          <h2 className="text-4xl font-extralight text-white text-center mb-10">Settings</h2>
-          
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-green-200/50">Break Interval (Minutes)</label>
-              <input 
-                type="number" 
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-lg focus:outline-none focus:border-accent"
-                value={localInterval}
-                onChange={(e) => setLocalInterval(parseInt(e.target.value))}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-green-200/50">Rest Duration (Seconds)</label>
-              <input 
-                type="number" 
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-lg focus:outline-none focus:border-accent"
-                value={localDuration}
-                onChange={(e) => setLocalDuration(parseInt(e.target.value))}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-10">
-            <button className="flex-1 h-14 bg-white text-bg-dark font-bold rounded-2xl hover:bg-accent transition-all cursor-pointer" onClick={handleApplySettings}>Apply</button>
-            <button className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl text-white flex items-center justify-center cursor-pointer hover:bg-white/10 transition-all" onClick={() => setIsSettingsOpen(false)}>✕</button>
-          </div>
-        </div>
-      </div>
+      <SettingsOverlay
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        initialInterval={settings.breakInterval}
+        initialDuration={settings.breakDuration}
+        onApply={handleApplySettings}
+      />
 
       {/* Insights Overlay */}
-      <div className={`fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 ${isInsightsOpen ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-105'}`}>
-        <div className="w-full max-w-[500px] bg-glass-heavy border border-white/10 rounded-[32px] p-10 shadow-2xl text-center">
-          <h2 className="text-4xl font-extralight text-white mb-6">Insights</h2>
-          <div className="text-6xl mb-6">📊</div>
-          <p className="text-green-200/50 mb-10 text-lg">Coming Soon...<br/>Track your break history and eye health stats here.</p>
-          <button className="w-full h-14 bg-white text-bg-dark font-bold rounded-2xl hover:bg-accent transition-all cursor-pointer" onClick={() => setIsInsightsOpen(false)}>Close</button>
-        </div>
-      </div>
+      <InsightsOverlay
+        isOpen={isInsightsOpen}
+        onClose={() => setIsInsightsOpen(false)}
+      />
 
       {/* Break View */}
-      <div className={`fixed inset-0 bg-bg-dark z-[1000] flex justify-center items-center transition-opacity duration-1000 ${isBreakActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="text-center animate-in zoom-in-95 duration-1000">
-          <div className="text-8xl mb-8 drop-shadow-[0_0_20px_var(--color-accent)]">🌿</div>
-          <h2 className="text-6xl font-extralight mb-6 text-accent tracking-tight">Time to Rest</h2>
-          <div className="font-mono text-[10rem] font-extralight my-10 text-white leading-none tracking-tighter">
-            {breakTimeLeft}
-          </div>
-          <p className="text-green-200/40 tracking-[0.3em] uppercase text-xs mb-12">Focus on the horizon • Blink often</p>
-          <button 
-            className="px-10 h-16 bg-white text-bg-dark font-bold text-lg rounded-2xl hover:bg-accent transition-all cursor-pointer shadow-2xl active:scale-[0.98]"
-            onClick={handleEndBreak}
-          >
-            I'm Refreshed ✓
-          </button>
-        </div>
-      </div>
+      <BreakView
+        isActive={isBreakActive}
+        timeLeft={breakTimeLeft}
+        onEnd={handleEndBreak}
+      />
 
       <ProfileOverlay isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       {!isAuthenticated && <LoginModal isOpen={true} onClose={() => {}} />}
-      
-      {/* Toast Notifications */}
-      <Toast toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

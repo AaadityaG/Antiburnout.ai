@@ -4,6 +4,7 @@ import { login as loginAction, logout as logoutAction, updateAIProviders } from 
 import type { RootState, AppDispatch } from '../store'
 import axios from 'axios'
 import ConfirmDialog from './ConfirmDialog'
+import { useToast } from '../context/ToastContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -29,6 +30,7 @@ const AI_PROVIDERS = {
 function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const dispatch = useDispatch<AppDispatch>()
   const { user, token } = useSelector((state: RootState) => state.auth)
+  const { success, error } = useToast()
   
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
@@ -62,8 +64,10 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
       const updatedUser = response.data
       dispatch(loginAction({ user: updatedUser, token }))
+      success('Profile Updated', 'Your profile has been saved successfully')
     } catch (error) {
       console.error('Failed to save profile:', error)
+      error('Update Failed', 'Could not save your profile. Please try again.')
     } finally {
       setIsSavingProfile(false)
     }
@@ -100,8 +104,10 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       
       setAiProviderInput({ provider: '', model: '', api_key: '' })
       setShowAIAddForm(false)
-    } catch (error) {
-      console.error('Failed to save AI provider:', error)
+      success('Provider Connected', 'AI provider has been added successfully')
+    } catch (err) {
+      console.error('Failed to save AI provider:', err)
+      error('Connection Failed', 'Could not connect to AI provider')
     } finally {
       setIsSavingProfile(false)
     }
@@ -137,8 +143,10 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         ai_providers: updatedUser.ai_providers,
         profile_completed: updatedUser.profile_completed
       }))
-    } catch (error) {
-      console.error('Failed to delete AI provider:', error)
+      success('Provider Removed', 'AI provider has been removed')
+    } catch (err) {
+      console.error('Failed to delete AI provider:', err)
+      error('Delete Failed', 'Could not remove AI provider')
     } finally {
       setIsSavingProfile(false)
       setProviderToDelete('')
@@ -237,14 +245,14 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     </div>
                     <div className="flex gap-3">
                       <button 
-                        className="flex-1 h-10 bg-white text-bg-dark font-bold rounded-xl hover:bg-accent transition-all disabled:opacity-50 cursor-pointer"
+                        className="flex-1 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-accent hover:text-primary transition-all duration-300 disabled:opacity-50 cursor-pointer"
                         onClick={saveAIProvider}
                         disabled={isSavingProfile || !aiProviderInput.provider || !aiProviderInput.model || !aiProviderInput.api_key}
                       >
                         {isSavingProfile ? 'Saving...' : 'Connect'}
                       </button>
                       <button 
-                        className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl text-white hover:bg-white/10 flex items-center justify-center transition-all cursor-pointer"
+                        className="w-10 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer"
                         onClick={() => setShowAIAddForm(false)}
                       >
                         ✕
@@ -264,7 +272,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         <div className="flex items-center gap-3">
                           <span className="text-[10px] font-bold text-accent uppercase tracking-wider">✓ Connected</span>
                           <button 
-                            className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 flex items-center justify-center transition-all duration-300 cursor-pointer opacity-60 group-hover:opacity-100"
+                            className="w-8 h-8 rounded-full bg-glass glass-blur border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 flex items-center justify-center transition-all duration-300 cursor-pointer opacity-60 group-hover:opacity-100"
                             onClick={() => deleteAIProvider(key)}
                             title="Remove provider"
                           >
@@ -316,14 +324,14 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
                 <div className="flex gap-3 mt-10">
                   <button 
-                    className="flex-1 h-14 bg-white text-bg-dark font-bold text-base rounded-2xl hover:bg-accent transition-all shadow-lg active:scale-[0.98] cursor-pointer"
+                    className="flex-1 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-accent hover:text-primary transition-all duration-300 shadow-lg active:scale-[0.98] cursor-pointer"
                     onClick={saveProfile} 
                     disabled={isSavingProfile}
                   >
                     {isSavingProfile ? 'Saving...' : 'Save Profile'}
                   </button>
                   <button 
-                    className="w-14 h-14 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white flex items-center justify-center transition-all active:scale-[0.98] cursor-pointer"
+                    className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 active:scale-[0.98] cursor-pointer"
                     onClick={onClose}
                   >
                     ✕
@@ -332,9 +340,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               </div>
 
               <button 
-                // className="text-[11px] font-medium text-red-500/60 hover:text-red-500 hover:underline transition-all w-fit mt-auto"
-                    className="w-auto h-14 bg-white/5 hover:bg-red-200/10 cursor-pointer  text-red-500/60 hover:text-red-500 border border-white/10 rounded-2xl  flex items-center justify-center transition-all active:scale-[0.98]"
-
+                className="w-auto h-14 rounded-full bg-glass glass-blur border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 font-medium transition-all duration-300 cursor-pointer active:scale-[0.98]"
                 onClick={handleLogout}
               >
                 Logout Session
