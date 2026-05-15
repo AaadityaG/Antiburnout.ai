@@ -1,60 +1,59 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { login as loginAction, logout as logoutAction, updateAIProviders } from './store/authSlice'
+import { login as loginAction, logout as logoutAction } from './store/authSlice'
 import { fetchSettings, updateSettings, clearSettings } from './store/settingsSlice'
 import type { RootState, AppDispatch } from './store'
-import './App.css'
-import axios from 'axios'
+import ProfileOverlay from './components/ProfileOverlay'
 import LoginModal from './components/LoginModal'
 
-const API_URL = import.meta.env.VITE_API_URL
-
-// Available AI Models
-const AI_PROVIDERS = {
-  openai: {
-    name: 'OpenAI',
-    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
-  },
-  anthropic: {
-    name: 'Anthropic (Claude)',
-    models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
-  },
-  google: {
-    name: 'Google (Gemini)',
-    models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash']
-  },
-  mistral: {
-    name: 'Mistral AI',
-    models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest']
-  }
-}
-
 function App() {
-  const [timeRemaining, setTimeRemaining] = useState(30 * 60 * 1000)
+  const dispatch = useDispatch<AppDispatch>()
+  const { isAuthenticated, token } = useSelector((state: RootState) => state.auth)
+  const settings = useSelector((state: RootState) => state.settings)
+
+  const [timeRemaining, setTimeRemaining] = useState(settings.breakInterval * 60 * 1000)
   const [isPaused, setIsPaused] = useState(false)
   const [isBreakActive, setIsBreakActive] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [breakTimeLeft, setBreakTimeLeft] = useState(settings.breakDuration)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
-  const [breakTimeLeft, setBreakTimeLeft] = useState(20)
-  const [intervalInput, setIntervalInput] = useState(30)
-  const [durationInput, setDurationInput] = useState(20)
-  const [autoStartInput, setAutoStartInput] = useState(true)
-  
-  // Redux state
-  const dispatch = useDispatch<AppDispatch>()
-  const { user, token, isAuthenticated } = useSelector((state: RootState) => state.auth)
-  const { breakInterval, breakDuration, autoStart } = useSelector((state: RootState) => state.settings)
-  const [showLoginModal, setShowLoginModal] = useState(!isAuthenticated)
-  
-  // Premium features state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
-  
-  // Profile form
-  const [profileName, setProfileName] = useState('')
-  const [profileEmail, setProfileEmail] = useState('')
-  const [isSavingProfile, setIsSavingProfile] = useState(false)
-  const [showAIProviders, setShowAIProviders] = useState(false)
-  const [aiProviderInput, setAiProviderInput] = useState({ provider: '', model: '', api_key: '' })
+
+  // Local state for settings inputs
+  const [localInterval, setLocalInterval] = useState(settings.breakInterval)
+  const [localDuration, setLocalDuration] = useState(settings.breakDuration)
+
+  // Fetch user settings when authenticated
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      dispatch(fetchSettings(token))
+    }
+  }, [isAuthenticated, token, dispatch])
+
+  // Sync timer when settings change
+  useEffect(() => {
+    setTimeRemaining(settings.breakInterval * 60 * 1000)
+    setBreakTimeLeft(settings.breakDuration)
+    setLocalInterval(settings.breakInterval)
+    setLocalDuration(settings.breakDuration)
+  }, [settings])
+
+  const handleApplySettings = useCallback(() => {
+    dispatch(updateSettings({ 
+      token: token || '', 
+      settings: { 
+        break_interval: localInterval,
+        break_duration: localDuration 
+      } 
+    }))
+    // Also notify Electron if needed
+    window.electronAPI?.sendUpdateTimerSetting({
+      interval: localInterval,
+      duration: localDuration,
+      autoStart: true
+    })
+    setIsSettingsOpen(false)
+  }, [token, localInterval, localDuration, dispatch])
 
   // Format time as MM:SS
   const formatTime = (ms: number): string => {
@@ -64,92 +63,52 @@ function App() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Check for existing session on app start
+  // Timer logic and IPC listeners
   useEffect(() => {
-    // Redux already loads from localStorage on init
-    setShowLoginModal(!isAuthenticated)
-  }, [isAuthenticated])
+    if (!window.electronAPI) return
 
-  // Fetch user settings when authenticated
-  useEffect(() => {
-    if (isAuthenticated && token) {
-      dispatch(fetchSettings(token))
-    }
-  }, [isAuthenticated, token, dispatch])
-
-  // Sync Redux settings to input states
-  useEffect(() => {
-    setIntervalInput(breakInterval)
-    setDurationInput(breakDuration)
-    setAutoStartInput(autoStart)
-  }, [breakInterval, breakDuration, autoStart])
-
-  // Calculate progress percentage
-  const initialTime = breakInterval * 60 * 1000
-  const progress = ((initialTime - timeRemaining) / initialTime) * 100
-
-  // Handle timer updates from main process
-  useEffect(() => {
-    if (!window.electronAPI) {
-      console.error('electronAPI not available!')
-      return
-    }
-
-    // Setup IPC listeners and store cleanup functions
-    const cleanupTimerUpdate = window.electronAPI.onTimerUpdate((time) => {
-      setTimeRemaining(time)
-    })
-
+    const cleanupTimerUpdate = window.electronAPI.onTimerUpdate((time) => setTimeRemaining(time))
     const cleanupTimerReset = window.electronAPI.onTimerReset(() => {
-      setTimeRemaining(initialTime)
+      setTimeRemaining(settings.breakInterval * 60 * 1000)
       setIsPaused(false)
     })
-
     const cleanupBreakTime = window.electronAPI.onBreakTime((data) => {
       if (data.duration) setBreakTimeLeft(data.duration)
       setIsBreakActive(true)
     })
-
     const cleanupSettingsUpdated = window.electronAPI.onSettingsUpdated((data) => {
       setTimeRemaining(data.interval * 60 * 1000)
     })
-    
-    // Cleanup IPC listeners on unmount
+
     return () => {
       cleanupTimerUpdate()
       cleanupTimerReset()
       cleanupBreakTime()
       cleanupSettingsUpdated()
     }
-  }, [])
+  }, [settings])
 
   // Break timer countdown
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null
-    
+    let interval: any = null
     if (isBreakActive && breakTimeLeft > 0) {
       interval = setInterval(() => {
         setBreakTimeLeft(prev => {
           if (prev <= 1) {
-            completeBreak()
+            setIsBreakActive(false)
+            window.electronAPI?.sendTimerBreakComplete()
             return 0
           }
           return prev - 1
         })
       }, 1000)
     }
-
-    return () => {
-      if (interval) clearInterval(interval)
-    }
+    return () => clearInterval(interval)
   }, [isBreakActive, breakTimeLeft])
 
   const togglePause = useCallback(() => {
-    if (isPaused) {
-      window.electronAPI?.sendResumeTimer()
-    } else {
-      window.electronAPI?.sendPauseTimer()
-    }
+    if (isPaused) window.electronAPI?.sendResumeTimer()
+    else window.electronAPI?.sendPauseTimer()
     setIsPaused(!isPaused)
   }, [isPaused])
 
@@ -158,577 +117,138 @@ function App() {
     setIsPaused(false)
   }, [])
 
-  const completeBreak = useCallback(() => {
-    setIsBreakActive(false)
-    window.electronAPI?.sendTimerBreakComplete()
-    setTimeout(() => {
-      window.electronAPI?.sendMinimizeToTray()
-    }, 500)
-  }, [])
-
-  const minimizeToTray = useCallback(() => {
-    window.electronAPI?.sendMinimizeToTray()
-  }, [])
-
-  const saveSettings = useCallback(() => {
-    if (intervalInput >= 1 && durationInput >= 5) {
-      // Update Electron main process
-      window.electronAPI?.sendUpdateTimerSetting({
-        interval: intervalInput,
-        duration: durationInput,
-        autoStart: autoStartInput,
-      })
-      
-      // Update backend if authenticated
-      if (token) {
-        dispatch(updateSettings({
-          token,
-          settings: {
-            break_interval: intervalInput,
-            break_duration: durationInput,
-            auto_start: autoStartInput
-          }
-        }))
-      }
-      
-      setIsSettingsOpen(false)
-    }
-  }, [intervalInput, durationInput, autoStartInput, token, dispatch])
-
-  const toggleAutoStart = useCallback(() => {
-    setAutoStartInput(prev => !prev)
-  }, [])
-
-  const openProfile = useCallback(() => {
-    if (user) {
-      setProfileName(user.name || '')
-      setProfileEmail(user.email || '')
-    }
-    setIsProfileOpen(true)
-  }, [user])
-
-  const saveProfile = useCallback(async () => {
-    if (!token) return
-    
-    setIsSavingProfile(true)
-    try {
-      const response = await axios.put(`${API_URL}/auth/profile`, {
-        name: profileName,
-        email: profileEmail,
-      }, {
-        params: { token }
-      })
-
-      const updatedUser = response.data
-      dispatch(loginAction({ user: updatedUser, token }))
-      setIsProfileOpen(false)
-    } catch (error) {
-      console.error('Failed to save profile:', error)
-      alert('Failed to save profile. Please try again.')
-    } finally {
-      setIsSavingProfile(false)
-    }
-  }, [token, profileName, profileEmail, dispatch])
-
-  const saveAIProvider = useCallback(async () => {
-    if (!token || !aiProviderInput.provider || !aiProviderInput.model || !aiProviderInput.api_key) {
-      alert('Please fill in all fields')
-      return
-    }
-    
-    setIsSavingProfile(true)
-    try {
-      const providerKey = aiProviderInput.provider
-      const aiProviders = {
-        [providerKey]: {
-          provider: aiProviderInput.provider,
-          model: aiProviderInput.model,
-          api_key: aiProviderInput.api_key
-        }
-      }
-      
-      const response = await axios.put(`${API_URL}/auth/profile`, {
-        ai_providers: aiProviders
-      }, {
-        params: { token }
-      })
-
-      const updatedUser = response.data
-      dispatch(updateAIProviders({ 
-        ai_providers: updatedUser.ai_providers,
-        profile_completed: updatedUser.profile_completed
-      }))
-      
-      setAiProviderInput({ provider: '', model: '', api_key: '' })
-      setShowAIProviders(false)
-      alert('AI provider added successfully!')
-    } catch (error) {
-      console.error('Failed to save AI provider:', error)
-      alert('Failed to save AI provider. Please try again.')
-    } finally {
-      setIsSavingProfile(false)
-    }
-  }, [token, aiProviderInput, dispatch])
-
-  const logout = useCallback(() => {
-    dispatch(logoutAction())
-    dispatch(clearSettings())
-    
-    // Reset UI state
-    setProfileName('')
-    setProfileEmail('')
-    setIsProfileOpen(false)
-    
-    // Show login modal
-    setShowLoginModal(true)
-  }, [dispatch])
-
-  const openInsights = useCallback(() => {
-    setIsInsightsOpen(true)
-  }, [])
+  const progress = ((settings.breakInterval * 60 * 1000 - timeRemaining) / (settings.breakInterval * 60 * 1000)) * 100
+  const circumference = 2 * Math.PI * 270
 
   return (
-    <>
-      <div className="drag-area"></div>
-      <div className="bg-image" id="bg-image"></div>
-      <div className="bg-overlay"></div>
+    <div className="relative w-screen h-screen flex flex-col justify-center items-center text-center overflow-hidden font-sans">
+      {/* Background Image Container */}
+      <div 
+        className="fixed inset-0 z-[-2] transition-transform duration-[10000ms] scale-105 bg-cover bg-center bg-no-repeat"
+        style={{ 
+          backgroundImage: "url('nature_bg.png')",
+          backgroundColor: "#0c140c" 
+        }}
+      ></div>
+      {/* Ambient Overlay */}
+      <div className="fixed inset-0 bg-gradient-to-br from-black/40 via-transparent to-black/60 z-[-1]"></div>
 
-      <div className="win-controls">
-        <div className="win-dot" onClick={minimizeToTray}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </div>
-        
+      {/* Draggable Area */}
+      <div className="fixed top-0 left-0 right-0 h-20 drag-area z-50"></div>
+
+      {/* Window Controls */}
+      <div className="fixed top-8 right-8 flex gap-3 z-[100] drag-none">
+        <button onClick={() => window.electronAPI?.sendMinimizeToTray()} className="w-10 h-10 rounded-xl bg-glass glass-blur border border-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all duration-300">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg>
+        </button>
       </div>
 
-      <main className="main-view">
-        <div className="timer-container">
-          <svg className="progress-svg">
-            <circle className="progress-bg" cx="290" cy="290" r="270" />
-            <circle 
-              className="progress-fill" 
-              id="progress-circle" 
-              cx="290" 
-              cy="290" 
-              r="270"
-              style={{
-                strokeDasharray: `${2 * Math.PI * 270} ${2 * Math.PI * 270}`,
-                strokeDashoffset: 2 * Math.PI * 270 - (progress / 100) * 2 * Math.PI * 270,
-              }}
-            />
-          </svg>
-          <div className="timer-text" id="timer">{formatTime(timeRemaining)}</div>
-        </div>
-        
-        <div className="status-badge">
-          <span 
-            id="status-dot" 
-            style={{
-              width: '8px', 
-              height: '8px', 
-              borderRadius: '50%', 
-              background: isPaused ? '#fbbf24' : '#4ade80', 
-              boxShadow: `0 0 10px ${isPaused ? '#fbbf24' : '#4ade80'}`,
-            }}
-          ></span>
-          <span id="status-text">{isPaused ? 'Timer paused' : 'Next break in...'}</span>
+      {/* Main UI */}
+      <main className={`relative flex flex-col mt-40 items-center justify-center transition-all duration-1000 ${isBreakActive ? 'scale-110 blur-xl opacity-0' : 'scale-100 opacity-100'}`}>
+        <div className="relative mb-8 animate-breathe">
+          <h1 className="font-mono text-[10rem] font-extralight leading-none tracking-tighter bg-gradient-to-b from-white to-accent bg-clip-text text-transparent drop-shadow-2xl">
+            {formatTime(timeRemaining)}
+          </h1>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[580px] h-[580px] z-[-1] -rotate-90">
+            <svg viewBox="0 0 600 600" className="w-full h-full">
+              <circle cx="300" cy="300" r="270" className="fill-none stroke-white/5 stroke-[4]" />
+              <circle cx="300" cy="300" r="270" 
+                className="fill-none stroke-accent stroke-[4] transition-[stroke-dashoffset] duration-1000 ease-linear drop-shadow-[0_0_12px_var(--color-accent)]"
+                strokeDasharray={circumference}
+                strokeDashoffset={circumference - (progress / 100) * circumference}
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="controls-bar">
-          <button className="action-btn" onClick={resetTimer} title="Reset">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-              <path d="M3 3v5h5"/>
-            </svg>
+        <div className="flex items-center gap-3 p-6  bg-glass glass-blur border border-white/10 rounded-full text-xs font-bold uppercase tracking-[0.2em] text-accent">
+          <span className={`w-2 h-2 rounded-full shadow-[0_0_8px] ${isPaused ? 'bg-yellow-400 shadow-yellow-400' : 'bg-green-400 shadow-green-400 animate-pulse'}`}></span>
+          {isPaused ? 'Paused' : 'Next break in...'}
+        </div>
+
+        <div className="mt-40 flex gap-4 items-center">
+          <button onClick={resetTimer} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           </button>
           
-          <button className="action-btn primary" id="pause-btn" onClick={togglePause}>
-            <span id="pause-icon">
-              {isPaused ? (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-              ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                </svg>
-              )}
-            </span>
-            <span id="pause-label">{isPaused ? 'Resume' : 'Pause'}</span>
+          <button onClick={togglePause}  className="w-42 px-5 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+            {isPaused ? 'Resume' : 'Pause'}
           </button>
 
-          <button className="action-btn" onClick={() => {
-            setIntervalInput(initialTime / 60000)
-            setDurationInput(breakDuration)
-            setIsSettingsOpen(true)
-          }} title="Settings">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
+          <button onClick={() => setIsSettingsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
 
-          <button className="action-btn" onClick={openProfile} title="Profile">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
+          <button onClick={() => setIsProfileOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </button>
 
-          <button className="action-btn" onClick={openInsights} title="Insights">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
-              <path d="M22 12A10 10 0 0 0 12 2v10z"/>
-            </svg>
+          <button onClick={() => setIsInsightsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
           </button>
         </div>
       </main>
 
       {/* Settings Overlay */}
-      <div className={`settings-overlay ${isSettingsOpen ? 'active' : ''}`} id="settings-view">
-        <div className="settings-content">
-          <h2 className="settings-header">Settings</h2>
+      <div className={`fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 ${isSettingsOpen ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-105'}`}>
+        <div className="w-full max-w-[500px] bg-glass-heavy border border-white/10 rounded-[32px] p-10 shadow-2xl">
+          <h2 className="text-4xl font-extralight text-white text-center mb-10">Settings</h2>
           
-          <div className="form-group">
-            <label className="label">Break Interval (Minutes)</label>
-            <input 
-              type="number" 
-              className="input" 
-              id="interval-input" 
-              value={intervalInput}
-              onChange={(e) => setIntervalInput(parseInt(e.target.value))}
-              placeholder="20" 
-              min="1" 
-              max="120"
-            />
-          </div>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-green-200/50">Break Interval (Minutes)</label>
+              <input 
+                type="number" 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-lg focus:outline-none focus:border-accent"
+                value={localInterval}
+                onChange={(e) => setLocalInterval(parseInt(e.target.value))}
+              />
+            </div>
 
-          <div className="form-group">
-            <label className="label">Rest Duration (Seconds)</label>
-            <input 
-              type="number" 
-              className="input" 
-              id="duration-input" 
-              value={durationInput}
-              onChange={(e) => setDurationInput(parseInt(e.target.value))}
-              placeholder="20" 
-              min="5" 
-              max="120"
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="label">Auto-Start Timer</label>
-            <div 
-              style={{
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '16px', 
-                padding: '16px 20px', 
-                background: 'rgba(255,255,255,0.05)', 
-                border: '1px solid rgba(255,255,255,0.1)', 
-                borderRadius: '16px', 
-                cursor: 'pointer',
-              }} 
-              onClick={toggleAutoStart}
-            >
-              <div 
-                 id="auto-start-toggle" 
-                style={{
-                  width: '52px', 
-                  height: '28px', 
-                  borderRadius: '14px', 
-                  background: autoStartInput ? '#4ade80' : 'rgba(255,255,255,0.2)', 
-                  position: 'relative', 
-                  transition: 'all 0.3s ease',
-                }}
-              >
-                <div 
-                  id="toggle-knob" 
-                  style={{
-                    width: '22px', 
-                    height: '22px', 
-                    borderRadius: '50%', 
-                    background: 'white', 
-                    position: 'absolute', 
-                    top: '3px', 
-                    [autoStartInput ? 'right' : 'left']: '3px',
-                    transition: 'all 0.3s ease', 
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  }}
-                ></div>
-              </div>
-              <span style={{ color: '#88a088', fontSize: '0.9rem' }}>Start timer automatically on launch</span>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-green-200/50">Rest Duration (Seconds)</label>
+              <input 
+                type="number" 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-lg focus:outline-none focus:border-accent"
+                value={localDuration}
+                onChange={(e) => setLocalDuration(parseInt(e.target.value))}
+              />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', marginTop: '40px' }}>
-            <button className="action-btn primary" onClick={saveSettings} style={{ flex: 1, height: '60px' }}>Apply</button>
-            <button className="action-btn" onClick={() => setIsSettingsOpen(false)} style={{ width: '60px', height: '60px' }}>✕</button>
+          <div className="flex gap-3 mt-10">
+            <button className="flex-1 h-14 bg-white text-bg-dark font-bold rounded-2xl hover:bg-accent transition-all" onClick={handleApplySettings}>Apply</button>
+            <button className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl text-white flex items-center justify-center" onClick={() => setIsSettingsOpen(false)}>✕</button>
           </div>
         </div>
       </div>
 
-      {/* Break Overlay */}
-      <div className={`break-overlay ${isBreakActive ? 'active' : ''}`} id="break-view">
-        <div className="break-card">
-          <div className="leaf-icon">🌿</div>
-          <h1 className="break-title">Time to Rest Your Eyes</h1>
-          <p style={{ fontSize: '1.5rem', opacity: 0.7, marginBottom: '20px' }}>Look at something 20 feet away...</p>
-          <div className="break-timer" id="break-timer">{breakTimeLeft}</div>
-          <button className="action-btn primary" onClick={completeBreak} style={{ margin: '0 auto', width: '240px', height: '64px' }}>
-            I'm Refreshed
-          </button>
+      {/* Insights Overlay */}
+      <div className={`fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 ${isInsightsOpen ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-105'}`}>
+        <div className="w-full max-w-[500px] bg-glass-heavy border border-white/10 rounded-[32px] p-10 shadow-2xl text-center">
+          <h2 className="text-4xl font-extralight text-white mb-6">Insights</h2>
+          <div className="text-6xl mb-6">📊</div>
+          <p className="text-green-200/50 mb-10 text-lg">Coming Soon...<br/>Track your break history and eye health stats here.</p>
+          <button className="w-full h-14 bg-white text-bg-dark font-bold rounded-2xl hover:bg-accent transition-all" onClick={() => setIsInsightsOpen(false)}>Close</button>
         </div>
       </div>
 
-      {/* Login Modal Component */}
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-      />
-
-      {/* Insights Overlay (Premium Feature) */}
-      <div className={`settings-overlay ${isInsightsOpen ? 'active' : ''}`} id="insights-view">
-        <div className="settings-content">
-          <h2 className="settings-header">Insights</h2>
-          
-          <div style={{
-            padding: '30px',
-            textAlign: 'center',
-            color: '#88a088',
-          }}>
-            <div style={{ fontSize: '60px', marginBottom: '20px' }}>📊</div>
-            <h3 style={{ color: 'white', marginBottom: '10px' }}>Usage Analytics</h3>
-            <p>Track your break patterns and eye health trends</p>
-            <p style={{ marginTop: '20px', fontSize: '13px' }}>Coming Soon...</p>
+      {/* Break View */}
+      <div className={`fixed inset-0 bg-bg-dark z-[1000] flex justify-center items-center transition-opacity duration-1000 ${isBreakActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className="text-center animate-in zoom-in-95 duration-1000">
+          <div className="text-8xl mb-8 drop-shadow-[0_0_20px_var(--color-accent)]">🌿</div>
+          <h2 className="text-6xl font-extralight mb-6 text-accent tracking-tight">Time to Rest</h2>
+          <div className="font-mono text-[10rem] font-extralight my-10 text-white leading-none tracking-tighter">
+            {breakTimeLeft}
           </div>
-
-          <div style={{ display: 'flex', gap: '16px', marginTop: '40px' }}>
-            <button 
-              className="action-btn" 
-              onClick={() => setIsInsightsOpen(false)} 
-              style={{ width: '60px', height: '60px' }}
-            >
-              ✕
-            </button>
-          </div>
+          <p className="text-green-200/40 tracking-[0.3em] uppercase text-xs">Focus on the horizon • Blink often</p>
         </div>
       </div>
 
-      {/* Profile Overlay */}
-      <div className={`settings-overlay ${isProfileOpen ? 'active' : ''}`} id="profile-view">
-        <div className="settings-content">
-          <h2 className="settings-header">User Profile</h2>
-          
-          <div style={{
-            padding: '20px',
-            background: 'rgba(74, 222, 128, 0.1)',
-            border: '1px solid rgba(74, 222, 128, 0.3)',
-            borderRadius: '16px',
-            marginBottom: '30px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '20px' }}>✓</span>
-              <p style={{ color: '#4ade80', margin: 0, fontSize: '14px', fontWeight: 600 }}>Authenticated</p>
-            </div>
-            <p style={{ color: '#88a088', margin: 0, fontSize: '12px' }}>
-              Your device is securely authenticated
-            </p>
-          </div>
-          
-          <div className="form-group">
-            <label className="label">Name (Optional)</label>
-            <input 
-              type="text" 
-              className="input" 
-              value={profileName}
-              onChange={(e) => setProfileName(e.target.value)}
-              placeholder="Enter your name"
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="label">Email (Optional)</label>
-            <input 
-              type="email" 
-              className="input" 
-              value={profileEmail}
-              onChange={(e) => setProfileEmail(e.target.value)}
-              placeholder="Enter your email"
-            />
-          </div>
-
-          <p style={{ color: '#88a088', fontSize: '13px', marginTop: '20px' }}>
-            Adding your name and email helps you identify your profile across devices.
-          </p>
-
-          {/* AI Providers Section */}
-          <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ color: '#4ade80', margin: 0, fontSize: '16px' }}>🤖 AI Providers</h3>
-              <button 
-                onClick={() => setShowAIProviders(!showAIProviders)}
-                style={{
-                  padding: '8px 16px',
-                  background: showAIProviders ? 'rgba(74, 222, 128, 0.2)' : 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(74, 222, 128, 0.3)',
-                  borderRadius: '8px',
-                  color: '#4ade80',
-                  cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-              >
-                {showAIProviders ? 'Cancel' : '+ Add Provider'}
-              </button>
-            </div>
-
-            {showAIProviders && (
-              <div style={{
-                padding: '20px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                marginBottom: '20px'
-              }}>
-                <div className="form-group">
-                  <label className="label">Provider</label>
-                  <select 
-                    className="input" 
-                    value={aiProviderInput.provider}
-                    onChange={(e) => setAiProviderInput({ ...aiProviderInput, provider: e.target.value, model: '' })}
-                  >
-                    <option value="">Select provider</option>
-                    {Object.entries(AI_PROVIDERS).map(([key, provider]) => (
-                      <option key={key} value={key}>{provider.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {aiProviderInput.provider && (
-                  <div className="form-group">
-                    <label className="label">Model</label>
-                    <select 
-                      className="input"
-                      value={aiProviderInput.model}
-                      onChange={(e) => setAiProviderInput({ ...aiProviderInput, model: e.target.value })}
-                    >
-                      <option value="">Select model</option>
-                      {AI_PROVIDERS[aiProviderInput.provider as keyof typeof AI_PROVIDERS].models.map(model => (
-                        <option key={model} value={model}>{model}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label className="label">API Key</label>
-                  <input 
-                    type="password"
-                    className="input"
-                    value={aiProviderInput.api_key}
-                    onChange={(e) => setAiProviderInput({ ...aiProviderInput, api_key: e.target.value })}
-                    placeholder="Enter your API key"
-                  />
-                </div>
-
-                <button 
-                  className="action-btn primary" 
-                  onClick={saveAIProvider}
-                  disabled={isSavingProfile}
-                  style={{ width: '100%', height: '50px', marginTop: '10px' }}
-                >
-                  {isSavingProfile ? 'Saving...' : 'Save AI Provider'}
-                </button>
-              </div>
-            )}
-
-            {/* Existing AI Providers List */}
-            {user?.ai_providers && Object.keys(user.ai_providers).length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {Object.entries(user.ai_providers).map(([key, provider]) => (
-                  <div key={key} style={{
-                    padding: '16px',
-                    background: 'rgba(74, 222, 128, 0.1)',
-                    border: '1px solid rgba(74, 222, 128, 0.3)',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div>
-                      <p style={{ color: '#4ade80', margin: 0, fontWeight: 600, fontSize: '14px' }}>
-                        {AI_PROVIDERS[key as keyof typeof AI_PROVIDERS]?.name || key}
-                      </p>
-                      <p style={{ color: '#88a088', margin: '4px 0 0', fontSize: '12px' }}>
-                        {provider.model}
-                      </p>
-                    </div>
-                    <div style={{
-                      padding: '4px 12px',
-                      background: 'rgba(74, 222, 128, 0.2)',
-                      borderRadius: '20px',
-                      fontSize: '11px',
-                      color: '#4ade80'
-                    }}>
-                      ✓ Connected
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: '16px', marginTop: '40px' }}>
-            <button 
-              className="action-btn primary" 
-              onClick={saveProfile} 
-              disabled={isSavingProfile}
-              style={{ flex: 1, height: '60px' }}
-            >
-              {isSavingProfile ? 'Saving...' : 'Save Profile'}
-            </button>
-            <button 
-              className="action-btn" 
-              onClick={() => setIsProfileOpen(false)} 
-              style={{ width: '60px', height: '60px' }}
-            >
-              ✕
-            </button>
-          </div>
-
-          <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <button 
-              onClick={logout}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: 'rgba(244, 67, 54, 0.1)',
-                border: '1px solid rgba(244, 67, 54, 0.3)',
-                borderRadius: '12px',
-                color: '#f44336',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(244, 67, 54, 0.2)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(244, 67, 54, 0.1)'
-              }}
-            >
-              Logout
-            </button>
-            <p style={{ color: '#88a088', fontSize: '12px', marginTop: '10px', textAlign: 'center' }}>
-              You'll need to login again to use the app
-            </p>
-          </div>
-        </div>
-      </div>
-    </>
+      <ProfileOverlay isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      {!isAuthenticated && <LoginModal isOpen={true} onClose={() => {}} />}
+    </div>
   )
 }
 

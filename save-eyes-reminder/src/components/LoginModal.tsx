@@ -52,48 +52,50 @@ function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
   if (!isOpen) return null
 
   return (
-    <div className={`settings-overlay ${isOpen ? 'active' : ''}`} id="login-modal" style={{ zIndex: 9999 }}>
-      <div className="settings-content">
-        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <div style={{
-            width: '100px',
-            height: '100px',
-            margin: '0 auto 30px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '50px',
-            boxShadow: '0 10px 40px rgba(102, 126, 234, 0.4)'
-          }}>
+    <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-500">
+      <div className="w-full max-w-[480px] bg-glass-heavy border border-white/10 rounded-[40px] p-10 shadow-2xl relative overflow-hidden group">
+        
+        {/* Background Glow */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-accent/20 blur-[80px] group-hover:bg-accent/30 transition-all duration-700"></div>
+        
+        <div className="relative flex flex-col items-center text-center">
+          <div className="w-24 h-24 mb-8 rounded-3xl bg-gradient-to-br from-primary to-accent/50 flex items-center justify-center text-5xl shadow-[0_10px_40px_rgba(74,222,128,0.2)] animate-breathe">
             👁️
           </div>
           
-          <h2 className="settings-header" style={{ fontSize: '32px', marginBottom: '10px' }}>Welcome to Save Eyes</h2>
-          <p style={{ color: '#88a088', marginBottom: '40px', fontSize: '16px' }}>
+          <h2 className="text-4xl font-extralight text-white tracking-tight mb-3">Save Eyes</h2>
+          <p className="text-green-200/50 text-base font-light mb-10">
             One-click login to protect your vision
           </p>
 
           {isAuthenticating ? (
-            <div style={{ padding: '20px', color: '#4ade80' }}>
-              <p style={{ fontSize: '18px' }}>🔄 Authenticating...</p>
+            <div className="h-[70px] flex items-center justify-center gap-3 text-accent font-medium">
+              <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+              <span>Authenticating...</span>
             </div>
           ) : (
             <button
               onClick={handleLogin}
-              className="action-btn primary"
-              style={{ width: '100%', height: '70px', fontSize: '18px', fontWeight: 600 }}
+              className="w-full h-[70px] bg-white text-bg-dark text-lg font-bold rounded-2xl hover:bg-accent transition-all duration-300 shadow-xl active:scale-[0.98] flex items-center justify-center gap-3"
             >
-              🔐 Login with Device
+              <span>🔐</span> Login with Device
             </button>
           )}
 
-          <p style={{ color: '#666', fontSize: '13px', marginTop: '30px', lineHeight: '1.8' }}>
-            ✨ One account per device<br/>
-            ⚡ Instant authentication<br/>
-            🔒 Secure & private
-          </p>
+          <div className="mt-10 pt-10 border-t border-white/5 w-full grid grid-cols-3 gap-4">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Fast</span>
+              <span className="text-lg">⚡</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Secure</span>
+              <span className="text-lg">🔒</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Private</span>
+              <span className="text-lg">✨</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -101,3 +103,4 @@ function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
 }
 
 export default LoginModal
+

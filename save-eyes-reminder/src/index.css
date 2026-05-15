@@ -1,2 +1,39 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #2d5a27;
+  --color-accent: #d4fcd4;
+  --color-bg-dark: #0c140c;
+  --color-glass: rgba(255, 255, 255, 0.08);
+  --color-glass-heavy: rgba(20, 30, 20, 0.85);
+  
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --animate-breathe: breathe 8s infinite ease-in-out;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+@layer utilities {
+  .glass-blur {
+    backdrop-filter: blur(40px);
+  }
+  .glass-blur-heavy {
+    backdrop-filter: blur(60px);
+  }
+  .drag-none {
+    -webkit-app-region: no-drag;
+  }
+  .drag-area {
+    -webkit-app-region: drag;
+  }
+}
+
+body {
+  @apply bg-bg-dark text-white font-sans overflow-hidden h-screen;
+}
+
