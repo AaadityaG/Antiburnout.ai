@@ -1,6 +1,6 @@
 {
   "37ca5784-6f6d-4cf6-b4bb-8047d7d024b3": {
-    "break_interval": 30,
+    "break_interval": 1,
     "break_duration": 20,
     "auto_start": true
   }

@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { login as loginAction, logout as logoutAction } from './store/authSlice'
-import { fetchSettings, updateSettings, clearSettings } from './store/settingsSlice'
+import { fetchSettings, updateSettings } from './store/settingsSlice'
 import type { RootState, AppDispatch } from './store'
 import ProfileOverlay from './components/ProfileOverlay'
 import LoginModal from './components/LoginModal'
+import Toast, { useToast } from './components/Toast'
 
 function App() {
   const dispatch = useDispatch<AppDispatch>()
   const { isAuthenticated, token } = useSelector((state: RootState) => state.auth)
   const settings = useSelector((state: RootState) => state.settings)
+
+  // Toast notifications
+  const { toasts, removeToast } = useToast()
 
   const [timeRemaining, setTimeRemaining] = useState(settings.breakInterval * 60 * 1000)
   const [isPaused, setIsPaused] = useState(false)
@@ -39,12 +42,13 @@ function App() {
   }, [settings])
 
   const handleApplySettings = useCallback(() => {
-    dispatch(updateSettings({ 
+    dispatch(updateSettings({
       token: token || '', 
       settings: { 
         break_interval: localInterval,
-        break_duration: localDuration 
-      } 
+        break_duration: localDuration,
+        auto_start: true
+      }
     }))
     // Also notify Electron if needed
     window.electronAPI?.sendUpdateTimerSetting({
@@ -117,6 +121,11 @@ function App() {
     setIsPaused(false)
   }, [])
 
+  const handleEndBreak = useCallback(() => {
+    setIsBreakActive(false)
+    window.electronAPI?.sendResetTimer()
+  }, [])
+
   const progress = ((settings.breakInterval * 60 * 1000 - timeRemaining) / (settings.breakInterval * 60 * 1000)) * 100
   const circumference = 2 * Math.PI * 270
 
@@ -138,7 +147,7 @@ function App() {
 
       {/* Window Controls */}
       <div className="fixed top-8 right-8 flex gap-3 z-[100] drag-none">
-        <button onClick={() => window.electronAPI?.sendMinimizeToTray()} className="w-10 h-10 rounded-xl bg-glass glass-blur border border-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all duration-300">
+        <button onClick={() => window.electronAPI?.sendMinimizeToTray()} className="w-10 h-10 rounded-xl bg-glass glass-blur border border-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all duration-300 cursor-pointer">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg>
         </button>
       </div>
@@ -168,23 +177,23 @@ function App() {
         </div>
 
         <div className="mt-40 flex gap-4 items-center">
-          <button onClick={resetTimer} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+          <button onClick={resetTimer} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           </button>
           
-          <button onClick={togglePause}  className="w-42 px-5 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+          <button onClick={togglePause}  className="w-42 px-5 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer">
             {isPaused ? 'Resume' : 'Pause'}
           </button>
 
-          <button onClick={() => setIsSettingsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+          <button onClick={() => setIsSettingsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
 
-          <button onClick={() => setIsProfileOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+          <button onClick={() => setIsProfileOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </button>
 
-          <button onClick={() => setIsInsightsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300">
+          <button onClick={() => setIsInsightsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
           </button>
         </div>
@@ -218,8 +227,8 @@ function App() {
           </div>
 
           <div className="flex gap-3 mt-10">
-            <button className="flex-1 h-14 bg-white text-bg-dark font-bold rounded-2xl hover:bg-accent transition-all" onClick={handleApplySettings}>Apply</button>
-            <button className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl text-white flex items-center justify-center" onClick={() => setIsSettingsOpen(false)}>✕</button>
+            <button className="flex-1 h-14 bg-white text-bg-dark font-bold rounded-2xl hover:bg-accent transition-all cursor-pointer" onClick={handleApplySettings}>Apply</button>
+            <button className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl text-white flex items-center justify-center cursor-pointer hover:bg-white/10 transition-all" onClick={() => setIsSettingsOpen(false)}>✕</button>
           </div>
         </div>
       </div>
@@ -230,7 +239,7 @@ function App() {
           <h2 className="text-4xl font-extralight text-white mb-6">Insights</h2>
           <div className="text-6xl mb-6">📊</div>
           <p className="text-green-200/50 mb-10 text-lg">Coming Soon...<br/>Track your break history and eye health stats here.</p>
-          <button className="w-full h-14 bg-white text-bg-dark font-bold rounded-2xl hover:bg-accent transition-all" onClick={() => setIsInsightsOpen(false)}>Close</button>
+          <button className="w-full h-14 bg-white text-bg-dark font-bold rounded-2xl hover:bg-accent transition-all cursor-pointer" onClick={() => setIsInsightsOpen(false)}>Close</button>
         </div>
       </div>
 
@@ -242,12 +251,21 @@ function App() {
           <div className="font-mono text-[10rem] font-extralight my-10 text-white leading-none tracking-tighter">
             {breakTimeLeft}
           </div>
-          <p className="text-green-200/40 tracking-[0.3em] uppercase text-xs">Focus on the horizon • Blink often</p>
+          <p className="text-green-200/40 tracking-[0.3em] uppercase text-xs mb-12">Focus on the horizon • Blink often</p>
+          <button 
+            className="px-10 h-16 bg-white text-bg-dark font-bold text-lg rounded-2xl hover:bg-accent transition-all cursor-pointer shadow-2xl active:scale-[0.98]"
+            onClick={handleEndBreak}
+          >
+            I'm Refreshed ✓
+          </button>
         </div>
       </div>
 
       <ProfileOverlay isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       {!isAuthenticated && <LoginModal isOpen={true} onClose={() => {}} />}
+      
+      {/* Toast Notifications */}
+      <Toast toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

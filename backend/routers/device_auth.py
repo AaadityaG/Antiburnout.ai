@@ -209,14 +209,29 @@ async def update_profile(token: str, request: ProfileUpdateRequest):
             device_id = user.get("device_id", "")
             encrypted_providers = {}
             
-            for provider_key, provider_data in request.ai_providers.items():
-                encrypted_providers[provider_key] = {
-                    "provider": provider_data.get("provider", ""),
-                    "model": provider_data.get("model", ""),
-                    "api_key": encrypt_api_key(provider_data.get("api_key", ""), device_id)
-                }
+            # Get existing providers first
+            existing_providers = user.get("ai_providers", {})
             
-            update_data["ai_providers"] = encrypted_providers
+            for provider_key, provider_data in request.ai_providers.items():
+                # If provider data is empty, it means delete this provider
+                if not provider_data.get("provider") and not provider_data.get("api_key"):
+                    # Remove from existing providers if it exists
+                    if provider_key in existing_providers:
+                        del existing_providers[provider_key]
+                else:
+                    # Add or update provider with encrypted key
+                    existing_providers[provider_key] = {
+                        "provider": provider_data.get("provider", ""),
+                        "model": provider_data.get("model", ""),
+                        "api_key": encrypt_api_key(provider_data.get("api_key", ""), device_id)
+                    }
+            
+            # Only update if there are providers left
+            if existing_providers:
+                update_data["ai_providers"] = existing_providers
+            elif "ai_providers" in user:
+                # Remove ai_providers field entirely if empty
+                update_data["ai_providers"] = {}
         
         # Check if profile is complete (has name/email OR has at least one AI provider)
         has_basic_info = bool(user.get("name") or request.name) and bool(user.get("email") or request.email)

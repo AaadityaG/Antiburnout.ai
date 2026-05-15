@@ -20,14 +20,14 @@
     "device_id": "2772664d8ba4248759dae1bdee97195f",
     "device_name": "Win32",
     "created_at": "2026-05-15T06:37:41.776503",
-    "last_login": "2026-05-15T09:26:45.024407",
-    "name": "Aditya",
+    "last_login": "2026-05-15T10:00:38.863254",
+    "name": "Aditya Gsd",
     "email": "adiya@gmail.com",
     "ai_providers": {
       "openai": {
         "provider": "openai",
         "model": "gpt-4o",
-        "api_key": "gAAAAABqBtsCU2B5aF6tphhrBNlB7DorXESDZOx4Wcs-nI__355BxcVaWPyMjU_YAS9vFIQ9asWyHgcKv-KkuGwqKpfzc6iuMA=="
+        "api_key": "gAAAAABqBu5i9T1TdOrFuCk-_O1pndBemknzn3939zdNgW0ma1FhzE7OVTRcphi6k3am6iEe5USDtgWhezYzOQMbeZuH0IngJQ=="
       }
     },
     "profile_completed": true

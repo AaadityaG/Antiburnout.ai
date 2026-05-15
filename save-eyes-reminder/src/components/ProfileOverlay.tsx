@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { login as loginAction, logout as logoutAction, updateAIProviders } from '../store/authSlice'
 import type { RootState, AppDispatch } from '../store'
 import axios from 'axios'
+import ConfirmDialog from './ConfirmDialog'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -34,6 +35,11 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [showAIAddForm, setShowAIAddForm] = useState(false)
   const [aiProviderInput, setAiProviderInput] = useState({ provider: '', model: '', api_key: '' })
+  
+  // Dialog states
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [providerToDelete, setProviderToDelete] = useState<string>('')
 
   useEffect(() => {
     if (user) {
@@ -56,10 +62,8 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
       const updatedUser = response.data
       dispatch(loginAction({ user: updatedUser, token }))
-      alert('Profile updated')
     } catch (error) {
       console.error('Failed to save profile:', error)
-      alert('Failed to save profile')
     } finally {
       setIsSavingProfile(false)
     }
@@ -98,17 +102,57 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       setShowAIAddForm(false)
     } catch (error) {
       console.error('Failed to save AI provider:', error)
-      alert('Failed to save AI provider')
     } finally {
       setIsSavingProfile(false)
     }
   }, [token, aiProviderInput, dispatch])
 
-  const handleLogout = useCallback(() => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      dispatch(logoutAction())
-      onClose()
+  const deleteAIProvider = useCallback((providerKey: string) => {
+    setProviderToDelete(providerKey)
+    setShowDeleteDialog(true)
+  }, [])
+
+  const confirmDeleteProvider = useCallback(async () => {
+    if (!token || !providerToDelete) return
+
+    setIsSavingProfile(true)
+    setShowDeleteDialog(false)
+    try {
+      const aiProviders = {
+        [providerToDelete]: {
+          provider: '',
+          model: '',
+          api_key: ''
+        }
+      }
+      
+      const response = await axios.put(`${API_URL}/auth/profile`, {
+        ai_providers: aiProviders
+      }, {
+        params: { token }
+      })
+
+      const updatedUser = response.data
+      dispatch(updateAIProviders({ 
+        ai_providers: updatedUser.ai_providers,
+        profile_completed: updatedUser.profile_completed
+      }))
+    } catch (error) {
+      console.error('Failed to delete AI provider:', error)
+    } finally {
+      setIsSavingProfile(false)
+      setProviderToDelete('')
     }
+  }, [token, providerToDelete, dispatch])
+
+  const handleLogout = useCallback(() => {
+    setShowLogoutDialog(true)
+  }, [])
+
+  const confirmLogout = useCallback(() => {
+    dispatch(logoutAction())
+    setShowLogoutDialog(false)
+    onClose()
   }, [dispatch, onClose])
 
   if (!isOpen) return null
@@ -141,7 +185,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">AI Providers</h3>
                   {!showAIAddForm && (
                     <button 
-                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-accent text-accent hover:bg-accent hover:text-primary transition-all duration-300"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-accent text-accent hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer"
                       onClick={() => setShowAIAddForm(true)}
                     >
                       + Add Provider
@@ -193,14 +237,14 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     </div>
                     <div className="flex gap-3">
                       <button 
-                        className="flex-1 h-10 bg-white text-bg-dark font-bold rounded-xl hover:bg-accent transition-all disabled:opacity-50"
+                        className="flex-1 h-10 bg-white text-bg-dark font-bold rounded-xl hover:bg-accent transition-all disabled:opacity-50 cursor-pointer"
                         onClick={saveAIProvider}
                         disabled={isSavingProfile || !aiProviderInput.provider || !aiProviderInput.model || !aiProviderInput.api_key}
                       >
                         {isSavingProfile ? 'Saving...' : 'Connect'}
                       </button>
                       <button 
-                        className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl text-white hover:bg-white/10 flex items-center justify-center transition-all"
+                        className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl text-white hover:bg-white/10 flex items-center justify-center transition-all cursor-pointer"
                         onClick={() => setShowAIAddForm(false)}
                       >
                         ✕
@@ -217,7 +261,19 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                           <span className="text-sm font-medium text-white">{AI_PROVIDERS[key as keyof typeof AI_PROVIDERS]?.name || key}</span>
                           <span className="text-[10px] font-mono text-green-200/40 mt-0.5">{provider.model}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-accent uppercase tracking-wider">✓ Connected</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] font-bold text-accent uppercase tracking-wider">✓ Connected</span>
+                          <button 
+                            className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 flex items-center justify-center transition-all duration-300 cursor-pointer opacity-60 group-hover:opacity-100"
+                            onClick={() => deleteAIProvider(key)}
+                            title="Remove provider"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     ))
                   ) : !showAIAddForm && (
@@ -260,14 +316,14 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
                 <div className="flex gap-3 mt-10">
                   <button 
-                    className="flex-1 h-14 bg-white text-bg-dark font-bold text-base rounded-2xl hover:bg-accent transition-all shadow-lg active:scale-[0.98]"
+                    className="flex-1 h-14 bg-white text-bg-dark font-bold text-base rounded-2xl hover:bg-accent transition-all shadow-lg active:scale-[0.98] cursor-pointer"
                     onClick={saveProfile} 
                     disabled={isSavingProfile}
                   >
                     {isSavingProfile ? 'Saving...' : 'Save Profile'}
                   </button>
                   <button 
-                    className="w-14 h-14 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white flex items-center justify-center transition-all active:scale-[0.98]"
+                    className="w-14 h-14 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white flex items-center justify-center transition-all active:scale-[0.98] cursor-pointer"
                     onClick={onClose}
                   >
                     ✕
@@ -287,6 +343,33 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </div>
         </main>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showLogoutDialog}
+        title="Logout Session"
+        message="Are you sure you want to logout? You'll need to login again to use the app."
+        confirmText="Logout"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutDialog(false)}
+      />
+
+      {/* Delete Provider Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        title="Remove AI Provider"
+        message={`Are you sure you want to remove ${AI_PROVIDERS[providerToDelete as keyof typeof AI_PROVIDERS]?.name || providerToDelete}? This action cannot be undone.`}
+        confirmText="Remove"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        onConfirm={confirmDeleteProvider}
+        onCancel={() => {
+          setShowDeleteDialog(false)
+          setProviderToDelete('')
+        }}
+      />
     </div>
   )
 }
