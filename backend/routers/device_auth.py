@@ -53,6 +53,20 @@ def create_default_settings(user_id: str):
         with open(SETTINGS_FILE, 'w') as f:
             json.dump(all_settings, f, indent=2)
 
+def sanitize_ai_providers(providers: dict) -> dict:
+    """Remove encrypted API keys from providers for safe response"""
+    if not providers:
+        return {}
+    
+    sanitized = {}
+    for key, provider in providers.items():
+        sanitized[key] = {
+            "provider": provider.get("provider", ""),
+            "model": provider.get("model", ""),
+            "has_key": bool(provider.get("api_key"))
+        }
+    return sanitized
+
 class DeviceAuthRequest(BaseModel):
     device_id: str
     device_name: str
@@ -106,6 +120,7 @@ async def device_auth(request: DeviceAuthRequest):
                     "device_name": user["device_name"],
                     "name": user.get("name", ""),
                     "email": user.get("email", ""),
+                    "ai_providers": sanitize_ai_providers(user.get("ai_providers", {})),
                     "profile_completed": user.get("profile_completed", False),
                     "created_at": user["created_at"],
                     "last_login": user["last_login"],
@@ -138,6 +153,7 @@ async def device_auth(request: DeviceAuthRequest):
                     "device_name": user["device_name"],
                     "name": user.get("name", ""),
                     "email": user.get("email", ""),
+                    "ai_providers": sanitize_ai_providers(user.get("ai_providers", {})),
                     "profile_completed": user.get("profile_completed", False),
                     "created_at": user["created_at"],
                     "last_login": user["last_login"],
@@ -242,14 +258,7 @@ async def update_profile(token: str, request: ProfileUpdateRequest):
             user = db.update_user(user_id, update_data)
         
         # Return profile without encrypted keys
-        safe_ai_providers = {}
-        if user.get("ai_providers"):
-            for provider_key, provider_data in user["ai_providers"].items():
-                safe_ai_providers[provider_key] = {
-                    "provider": provider_data.get("provider", ""),
-                    "model": provider_data.get("model", ""),
-                    "has_key": bool(provider_data.get("api_key"))
-                }
+        safe_ai_providers = sanitize_ai_providers(user.get("ai_providers", {}))
         
         return {
             "id": str(user["id"]),

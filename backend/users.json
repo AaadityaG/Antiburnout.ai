@@ -20,7 +20,7 @@
     "device_id": "2772664d8ba4248759dae1bdee97195f",
     "device_name": "Win32",
     "created_at": "2026-05-15T06:37:41.776503",
-    "last_login": "2026-05-15T10:12:03.527641",
+    "last_login": "2026-05-15T10:16:57.517581",
     "name": "Aditya G",
     "email": "adiya@gmail.com",
     "ai_providers": {
@@ -28,11 +28,6 @@
         "provider": "anthropic",
         "model": "claude-3-5-sonnet-20241022",
         "api_key": "gAAAAABqBvD12sc9050-0UtTCGsZfI85eowVayTDjRtOk5nETiQuUgh96E5SqbaNn9bMXZLYCDngJneAfokbPV5l3YbLe94qJg=="
-      },
-      "google": {
-        "provider": "google",
-        "model": "gemini-2.0-flash",
-        "api_key": "gAAAAABqBvEdwPv8On9xGxmGMDgADRqRh1qKR3h01SPS6dTgGzFKu8ARLzKsTO9TLYrSdYlMzyKCtB1MxwdarzkmBE_k8r7Etg=="
       }
     },
     "profile_completed": true
