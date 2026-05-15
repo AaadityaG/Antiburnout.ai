@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { login as loginAction, logout as logoutAction } from './store/authSlice'
+import { login as loginAction, logout as logoutAction, updateAIProviders } from './store/authSlice'
 import { fetchSettings, updateSettings, clearSettings } from './store/settingsSlice'
 import type { RootState, AppDispatch } from './store'
 import './App.css'
@@ -8,6 +8,26 @@ import axios from 'axios'
 import LoginModal from './components/LoginModal'
 
 const API_URL = import.meta.env.VITE_API_URL
+
+// Available AI Models
+const AI_PROVIDERS = {
+  openai: {
+    name: 'OpenAI',
+    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
+  },
+  anthropic: {
+    name: 'Anthropic (Claude)',
+    models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
+  },
+  google: {
+    name: 'Google (Gemini)',
+    models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash']
+  },
+  mistral: {
+    name: 'Mistral AI',
+    models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest']
+  }
+}
 
 function App() {
   const [timeRemaining, setTimeRemaining] = useState(30 * 60 * 1000)
@@ -33,6 +53,8 @@ function App() {
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
   const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [showAIProviders, setShowAIProviders] = useState(false)
+  const [aiProviderInput, setAiProviderInput] = useState({ provider: '', model: '', api_key: '' })
 
   // Format time as MM:SS
   const formatTime = (ms: number): string => {
@@ -208,6 +230,46 @@ function App() {
     }
   }, [token, profileName, profileEmail, dispatch])
 
+  const saveAIProvider = useCallback(async () => {
+    if (!token || !aiProviderInput.provider || !aiProviderInput.model || !aiProviderInput.api_key) {
+      alert('Please fill in all fields')
+      return
+    }
+    
+    setIsSavingProfile(true)
+    try {
+      const providerKey = aiProviderInput.provider
+      const aiProviders = {
+        [providerKey]: {
+          provider: aiProviderInput.provider,
+          model: aiProviderInput.model,
+          api_key: aiProviderInput.api_key
+        }
+      }
+      
+      const response = await axios.put(`${API_URL}/auth/profile`, {
+        ai_providers: aiProviders
+      }, {
+        params: { token }
+      })
+
+      const updatedUser = response.data
+      dispatch(updateAIProviders({ 
+        ai_providers: updatedUser.ai_providers,
+        profile_completed: updatedUser.profile_completed
+      }))
+      
+      setAiProviderInput({ provider: '', model: '', api_key: '' })
+      setShowAIProviders(false)
+      alert('AI provider added successfully!')
+    } catch (error) {
+      console.error('Failed to save AI provider:', error)
+      alert('Failed to save AI provider. Please try again.')
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }, [token, aiProviderInput, dispatch])
+
   const logout = useCallback(() => {
     dispatch(logoutAction())
     dispatch(clearSettings())
@@ -372,7 +434,7 @@ function App() {
               onClick={toggleAutoStart}
             >
               <div 
-                id="auto-start-toggle" 
+                 id="auto-start-toggle" 
                 style={{
                   width: '52px', 
                   height: '28px', 
@@ -501,6 +563,122 @@ function App() {
           <p style={{ color: '#88a088', fontSize: '13px', marginTop: '20px' }}>
             Adding your name and email helps you identify your profile across devices.
           </p>
+
+          {/* AI Providers Section */}
+          <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ color: '#4ade80', margin: 0, fontSize: '16px' }}>🤖 AI Providers</h3>
+              <button 
+                onClick={() => setShowAIProviders(!showAIProviders)}
+                style={{
+                  padding: '8px 16px',
+                  background: showAIProviders ? 'rgba(74, 222, 128, 0.2)' : 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(74, 222, 128, 0.3)',
+                  borderRadius: '8px',
+                  color: '#4ade80',
+                  cursor: 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                {showAIProviders ? 'Cancel' : '+ Add Provider'}
+              </button>
+            </div>
+
+            {showAIProviders && (
+              <div style={{
+                padding: '20px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                marginBottom: '20px'
+              }}>
+                <div className="form-group">
+                  <label className="label">Provider</label>
+                  <select 
+                    className="input" 
+                    value={aiProviderInput.provider}
+                    onChange={(e) => setAiProviderInput({ ...aiProviderInput, provider: e.target.value, model: '' })}
+                  >
+                    <option value="">Select provider</option>
+                    {Object.entries(AI_PROVIDERS).map(([key, provider]) => (
+                      <option key={key} value={key}>{provider.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {aiProviderInput.provider && (
+                  <div className="form-group">
+                    <label className="label">Model</label>
+                    <select 
+                      className="input"
+                      value={aiProviderInput.model}
+                      onChange={(e) => setAiProviderInput({ ...aiProviderInput, model: e.target.value })}
+                    >
+                      <option value="">Select model</option>
+                      {AI_PROVIDERS[aiProviderInput.provider as keyof typeof AI_PROVIDERS].models.map(model => (
+                        <option key={model} value={model}>{model}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label className="label">API Key</label>
+                  <input 
+                    type="password"
+                    className="input"
+                    value={aiProviderInput.api_key}
+                    onChange={(e) => setAiProviderInput({ ...aiProviderInput, api_key: e.target.value })}
+                    placeholder="Enter your API key"
+                  />
+                </div>
+
+                <button 
+                  className="action-btn primary" 
+                  onClick={saveAIProvider}
+                  disabled={isSavingProfile}
+                  style={{ width: '100%', height: '50px', marginTop: '10px' }}
+                >
+                  {isSavingProfile ? 'Saving...' : 'Save AI Provider'}
+                </button>
+              </div>
+            )}
+
+            {/* Existing AI Providers List */}
+            {user?.ai_providers && Object.keys(user.ai_providers).length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {Object.entries(user.ai_providers).map(([key, provider]) => (
+                  <div key={key} style={{
+                    padding: '16px',
+                    background: 'rgba(74, 222, 128, 0.1)',
+                    border: '1px solid rgba(74, 222, 128, 0.3)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <p style={{ color: '#4ade80', margin: 0, fontWeight: 600, fontSize: '14px' }}>
+                        {AI_PROVIDERS[key as keyof typeof AI_PROVIDERS]?.name || key}
+                      </p>
+                      <p style={{ color: '#88a088', margin: '4px 0 0', fontSize: '12px' }}>
+                        {provider.model}
+                      </p>
+                    </div>
+                    <div style={{
+                      padding: '4px 12px',
+                      background: 'rgba(74, 222, 128, 0.2)',
+                      borderRadius: '20px',
+                      fontSize: '11px',
+                      color: '#4ade80'
+                    }}>
+                      ✓ Connected
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div style={{ display: 'flex', gap: '16px', marginTop: '40px' }}>
             <button 
