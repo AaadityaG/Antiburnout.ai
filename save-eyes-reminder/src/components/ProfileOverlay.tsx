@@ -265,7 +265,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                   {user?.ai_providers && Object.keys(user.ai_providers).length > 0 ? (
                     Object.entries(user.ai_providers).map(([key, provider]) => (
                       <div key={key} className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl flex justify-between items-center group hover:border-accent/30 transition-all duration-300">
-                        <div className="flex flex-col">
+                        <div className="flex flex-col items-start">
                           <span className="text-sm font-medium text-white">{AI_PROVIDERS[key as keyof typeof AI_PROVIDERS]?.name || key}</span>
                           <span className="text-[10px] font-mono text-green-200/40 mt-0.5">{provider.model}</span>
                         </div>
