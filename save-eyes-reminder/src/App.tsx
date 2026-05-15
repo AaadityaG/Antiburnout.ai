@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchSettings, updateSettings } from './store/settingsSlice'
 import type { RootState, AppDispatch } from './store'
@@ -7,6 +7,7 @@ import LoginModal from './components/LoginModal'
 import SettingsOverlay from './components/SettingsOverlay'
 import InsightsOverlay from './components/InsightsOverlay'
 import BreakView from './components/BreakView'
+import ChatOverlay from './components/ChatOverlay'
 
 function App() {
   const dispatch = useDispatch<AppDispatch>()
@@ -20,6 +21,7 @@ function App() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   // Fetch user settings when authenticated
   useEffect(() => {
@@ -28,11 +30,16 @@ function App() {
     }
   }, [isAuthenticated, token, dispatch])
 
-  // Sync timer when settings change
+  // Sync timer ONLY when settings are initially loaded from backend (not on every change)
+  const hasInitializedTimer = useRef(false)
   useEffect(() => {
-    setTimeRemaining(settings.breakInterval * 60 * 1000)
-    setBreakTimeLeft(settings.breakDuration)
-  }, [settings])
+    // Only sync on initial load, not on user-initiated changes
+    if (!hasInitializedTimer.current && settings.breakInterval > 0) {
+      setTimeRemaining(settings.breakInterval * 60 * 1000)
+      setBreakTimeLeft(settings.breakDuration)
+      hasInitializedTimer.current = true
+    }
+  }, [settings.breakInterval, settings.breakDuration])
 
   const handleApplySettings = useCallback((interval: number, duration: number) => {
     dispatch(updateSettings({
@@ -190,6 +197,10 @@ function App() {
           <button onClick={() => setIsInsightsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
           </button>
+
+          <button onClick={() => setIsChatOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </button>
         </div>
       </main>
 
@@ -215,6 +226,7 @@ function App() {
         onEnd={handleEndBreak}
       />
 
+      <ChatOverlay isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
       <ProfileOverlay isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       {!isAuthenticated && <LoginModal isOpen={true} onClose={() => {}} />}
     </div>

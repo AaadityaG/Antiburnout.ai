@@ -12,10 +12,11 @@ let breakTimer: NodeJS.Timeout | null = null
 let timeRemaining = 30 * 60 * 1000
 let initialTime = 30 * 60 * 1000
 let breakDuration = 20
-let autoStart = true
+let autoStart = false  // Changed to false - will start after receiving settings from backend
 let isPaused = false
 let isMinimized = false
 let isQuitting = false
+let settingsReceived = false  // Track if we've received settings from backend
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json')
 
@@ -316,6 +317,11 @@ ipcMain.on('update-timer-setting', (event, { interval, duration, autoStart: newA
   breakDuration = duration
   if (newAutoStart !== undefined) autoStart = newAutoStart
   saveConfig()
+  
+  // Mark that we've received settings from backend
+  settingsReceived = true
+  
+  // Start or restart the timer with new settings
   startBreakTimer()
   
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -344,9 +350,8 @@ app.whenReady().then(() => {
   createWindow()
   createTray()
   
-  if (autoStart) {
-    startBreakTimer()
-  }
+  // Don't start timer yet - wait for settings from backend
+  // Timer will start when frontend sends settings after login
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
