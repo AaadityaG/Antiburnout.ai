@@ -116,6 +116,8 @@ function App() {
   const handleEndBreak = useCallback(() => {
     setIsBreakActive(false)
     window.electronAPI?.sendResetTimer()
+    // Minimize app to tray after ending break
+    window.electronAPI?.sendMinimizeToTray()
   }, [])
 
   const progress = ((settings.breakInterval * 60 * 1000 - timeRemaining) / (settings.breakInterval * 60 * 1000)) * 100
