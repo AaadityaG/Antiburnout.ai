@@ -155,6 +155,7 @@ body {
   justify-content: center;
   transition: var(--transition);
   font-family: inherit;
+  position: relative;
 }
 
 .action-btn:hover {

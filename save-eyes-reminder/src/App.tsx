@@ -1,28 +1,29 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { login as loginAction, logout as logoutAction } from './store/authSlice'
+import { fetchSettings, updateSettings, clearSettings } from './store/settingsSlice'
+import type { RootState, AppDispatch } from './store'
 import './App.css'
 import axios from 'axios'
 import LoginModal from './components/LoginModal'
 
-const API_URL = 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL
 
 function App() {
   const [timeRemaining, setTimeRemaining] = useState(30 * 60 * 1000)
-  const [initialTime, setInitialTime] = useState(30 * 60 * 1000)
-  const [breakDuration, setBreakDuration] = useState(20)
   const [isPaused, setIsPaused] = useState(false)
   const [isBreakActive, setIsBreakActive] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
-  const [autoStart, setAutoStart] = useState(true)
   const [breakTimeLeft, setBreakTimeLeft] = useState(20)
   const [intervalInput, setIntervalInput] = useState(30)
   const [durationInput, setDurationInput] = useState(20)
   
-  // Auth state
-  const [user, setUser] = useState<any>(null)
-  const [token, setToken] = useState<string | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [showLoginModal, setShowLoginModal] = useState(false)
+  // Redux state
+  const dispatch = useDispatch<AppDispatch>()
+  const { user, token, isAuthenticated } = useSelector((state: RootState) => state.auth)
+  const { breakInterval, breakDuration, autoStart } = useSelector((state: RootState) => state.settings)
+  const [showLoginModal, setShowLoginModal] = useState(!isAuthenticated)
   
   // Premium features state
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
@@ -42,23 +43,19 @@ function App() {
 
   // Check for existing session on app start
   useEffect(() => {
-    const savedToken = localStorage.getItem('token')
-    const savedUser = localStorage.getItem('user')
-    const savedDeviceId = localStorage.getItem('device_id')
-    
-    // If we have all data, mark as authenticated
-    if (savedToken && savedUser && savedDeviceId) {
-      setToken(savedToken)
-      setUser(JSON.parse(savedUser))
-      const userData = JSON.parse(savedUser)
-      setProfileName(userData.name || '')
-      setProfileEmail(userData.email || '')
-      setIsAuthenticated(true)
+    // Redux already loads from localStorage on init
+    setShowLoginModal(!isAuthenticated)
+  }, [isAuthenticated])
+
+  // Fetch user settings when authenticated
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      dispatch(fetchSettings(token))
     }
-    // App always loads, authentication is optional for premium features
-  }, [])
+  }, [isAuthenticated, token, dispatch])
 
   // Calculate progress percentage
+  const initialTime = breakInterval * 60 * 1000
   const progress = ((initialTime - timeRemaining) / initialTime) * 100
 
   // Handle timer updates from main process
@@ -79,16 +76,12 @@ function App() {
     })
 
     const cleanupBreakTime = window.electronAPI.onBreakTime((data) => {
-      if (data.duration) setBreakDuration(data.duration)
-      setBreakTimeLeft(data.duration)
+      if (data.duration) setBreakTimeLeft(data.duration)
       setIsBreakActive(true)
     })
 
     const cleanupSettingsUpdated = window.electronAPI.onSettingsUpdated((data) => {
-      setInitialTime(data.interval * 60 * 1000)
-      setBreakDuration(data.duration)
       setTimeRemaining(data.interval * 60 * 1000)
-      if (data.autoStart !== undefined) setAutoStart(data.autoStart)
     })
     
     // Cleanup IPC listeners on unmount
@@ -149,28 +142,40 @@ function App() {
 
   const saveSettings = useCallback(() => {
     if (intervalInput >= 1 && durationInput >= 5) {
+      // Update Electron main process
       window.electronAPI?.sendUpdateTimerSetting({
         interval: intervalInput,
         duration: durationInput,
         autoStart,
       })
+      
+      // Update backend if authenticated
+      if (token) {
+        dispatch(updateSettings({
+          token,
+          settings: {
+            break_interval: intervalInput,
+            break_duration: durationInput,
+            auto_start: autoStart
+          }
+        }))
+      }
+      
       setIsSettingsOpen(false)
     }
-  }, [intervalInput, durationInput, autoStart])
+  }, [intervalInput, durationInput, autoStart, token, dispatch])
 
   const toggleAutoStart = useCallback(() => {
-    setAutoStart(!autoStart)
-  }, [autoStart])
+    // Will be handled when saving settings
+  }, [])
 
   const openProfile = useCallback(() => {
-    if (!isAuthenticated) {
-      setShowLoginModal(true)
-    } else {
+    if (user) {
       setProfileName(user.name || '')
       setProfileEmail(user.email || '')
-      setIsProfileOpen(true)
     }
-  }, [isAuthenticated, user])
+    setIsProfileOpen(true)
+  }, [user])
 
   const saveProfile = useCallback(async () => {
     if (!token) return
@@ -185,8 +190,7 @@ function App() {
       })
 
       const updatedUser = response.data
-      setUser(updatedUser)
-      localStorage.setItem('user', JSON.stringify(updatedUser))
+      dispatch(loginAction({ user: updatedUser, token }))
       setIsProfileOpen(false)
     } catch (error) {
       console.error('Failed to save profile:', error)
@@ -194,42 +198,24 @@ function App() {
     } finally {
       setIsSavingProfile(false)
     }
-  }, [token, profileName, profileEmail])
+  }, [token, profileName, profileEmail, dispatch])
 
   const logout = useCallback(() => {
-    // Clear all stored data
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('device_id')
+    dispatch(logoutAction())
+    dispatch(clearSettings())
     
-    // Reset state
-    setUser(null)
-    setToken(null)
+    // Reset UI state
     setProfileName('')
     setProfileEmail('')
     setIsProfileOpen(false)
-    setIsAuthenticated(false)
-  }, [])
-
-  const handleLoginSuccess = useCallback((userData: any, accessToken: string) => {
-    setToken(accessToken)
-    setUser(userData)
-    localStorage.setItem('token', accessToken)
-    localStorage.setItem('user', JSON.stringify(userData))
     
-    setProfileName(userData.name || '')
-    setProfileEmail(userData.email || '')
-    setIsAuthenticated(true)
-    setShowLoginModal(false)
-  }, [])
+    // Show login modal
+    setShowLoginModal(true)
+  }, [dispatch])
 
   const openInsights = useCallback(() => {
-    if (!isAuthenticated) {
-      setShowLoginModal(true)
-    } else {
-      setIsInsightsOpen(true)
-    }
-  }, [isAuthenticated])
+    setIsInsightsOpen(true)
+  }, [])
 
   return (
     <>
@@ -431,7 +417,6 @@ function App() {
       <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-        onLoginSuccess={handleLoginSuccess}
       />
 
       {/* Insights Overlay (Premium Feature) */}
@@ -474,9 +459,12 @@ function App() {
             borderRadius: '16px',
             marginBottom: '30px',
           }}>
-            <p style={{ color: '#4ade80', margin: '0 0 10px 0', fontSize: '14px' }}>✓ Device Authenticated</p>
-            <p style={{ color: '#88a088', margin: 0, fontSize: '12px', wordBreak: 'break-all' }}>
-              Device ID: {user?.device_id}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '20px' }}>✓</span>
+              <p style={{ color: '#4ade80', margin: 0, fontSize: '14px', fontWeight: 600 }}>Authenticated</p>
+            </div>
+            <p style={{ color: '#88a088', margin: 0, fontSize: '12px' }}>
+              Your device is securely authenticated
             </p>
           </div>
           

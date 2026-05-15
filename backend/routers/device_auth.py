@@ -4,8 +4,34 @@ from auth import create_access_token
 from database import db
 import uuid
 from datetime import datetime
+import json
+from pathlib import Path
 
 router = APIRouter(prefix="/auth", tags=["Device Auth"])
+
+SETTINGS_FILE = Path(__file__).parent.parent / "settings.json"
+
+def create_default_settings(user_id: str):
+    """Create default settings for a user if they don't exist"""
+    default_settings = {
+        "break_interval": 30,
+        "break_duration": 220,
+        "auto_start": True
+    }
+    
+    # Load existing settings
+    all_settings = {}
+    if SETTINGS_FILE.exists():
+        with open(SETTINGS_FILE, 'r') as f:
+            all_settings = json.load(f)
+    
+    # Only create if user doesn't have settings yet
+    if user_id not in all_settings:
+        all_settings[user_id] = default_settings
+        
+        # Save back to file
+        with open(SETTINGS_FILE, 'w') as f:
+            json.dump(all_settings, f, indent=2)
 
 class DeviceAuthRequest(BaseModel):
     device_id: str
@@ -35,6 +61,9 @@ async def device_auth(request: DeviceAuthRequest):
             user["last_login"] = datetime.utcnow().isoformat()
             db.update_user(user["id"], user)
             
+            # Create default settings if user doesn't have any
+            create_default_settings(user["id"])
+            
             # Create JWT token
             access_token = create_access_token(data={"sub": str(user["id"])})
             
@@ -44,6 +73,8 @@ async def device_auth(request: DeviceAuthRequest):
                     "id": str(user["id"]),
                     "device_id": user["device_id"],
                     "device_name": user["device_name"],
+                    "name": user.get("name", ""),
+                    "email": user.get("email", ""),
                     "created_at": user["created_at"],
                     "last_login": user["last_login"],
                 },
@@ -61,6 +92,9 @@ async def device_auth(request: DeviceAuthRequest):
             
             user = db.create_user(new_user)
             
+            # Create default settings for new user
+            create_default_settings(user["id"])
+            
             # Create JWT token
             access_token = create_access_token(data={"sub": str(user["id"])})
             
@@ -70,6 +104,8 @@ async def device_auth(request: DeviceAuthRequest):
                     "id": str(user["id"]),
                     "device_id": user["device_id"],
                     "device_name": user["device_name"],
+                    "name": user.get("name", ""),
+                    "email": user.get("email", ""),
                     "created_at": user["created_at"],
                     "last_login": user["last_login"],
                 },

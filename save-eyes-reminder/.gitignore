@@ -24,3 +24,4 @@ electron-dist
 *.njsproj
 *.sln
 *.sw?
+.env

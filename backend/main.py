@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import device_auth
+from routers import device_auth, settings
 
 app = FastAPI(
     title="Save Eyes Reminder API",
@@ -19,6 +19,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(device_auth.router)
+app.include_router(settings.router)
 
 @app.get("/")
 async def root():

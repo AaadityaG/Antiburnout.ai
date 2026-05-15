@@ -20,6 +20,7 @@ interface TimerSetting {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  getMachineId: () => ipcRenderer.invoke('get-machine-id'),
   
   // Listen for events from main process
   onTimerUpdate: (callback: (time: number) => void) => {

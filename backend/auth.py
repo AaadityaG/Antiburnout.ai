@@ -1,11 +1,16 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
+import os
+from dotenv import load_dotenv
 
-# JWT Configuration
-SECRET_KEY = "save-eyes-secret-key-change-in-production"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Load environment variables
+load_dotenv()
+
+# JWT Configuration from .env
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):

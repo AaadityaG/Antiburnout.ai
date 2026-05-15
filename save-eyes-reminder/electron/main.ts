@@ -2,6 +2,8 @@ import { app, BrowserWindow, Tray, Menu, ipcMain } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import AutoLaunch from 'auto-launch'
+import { execSync } from 'child_process'
+import crypto from 'crypto'
 // __dirname and __filename are available as globals in CommonJS
 
 let mainWindow: BrowserWindow | null = null
@@ -49,6 +51,41 @@ function saveConfig() {
 }
 
 loadConfig()
+
+function getMachineId(): string {
+  try {
+    let machineId = ''
+    
+    if (process.platform === 'win32') {
+      // Windows: Get machine GUID from registry
+      machineId = execSync(
+        'powershell -command "(Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Cryptography).MachineGuid"',
+        { encoding: 'utf8' }
+      ).trim()
+    } else if (process.platform === 'darwin') {
+      // macOS: Get hardware UUID
+      machineId = execSync('ioreg -rd1 -c IOPlatformExpertDevice | grep IOPlatformUUID', 
+        { encoding: 'utf8' }
+      ).split('"')[3]
+    } else {
+      // Linux: Get machine ID
+      machineId = execSync('cat /var/lib/dbus/machine-id', { encoding: 'utf8' }).trim()
+    }
+    
+    // Hash it for privacy
+    return crypto.createHash('sha256').update(machineId).digest('hex').substring(0, 32)
+  } catch (error) {
+    console.error('Failed to get machine ID:', error)
+    // Fallback to a stored UUID
+    const configPath = path.join(app.getPath('userData'), 'machine-id.json')
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, 'utf8')).machineId
+    }
+    const fallbackId = crypto.randomUUID()
+    fs.writeFileSync(configPath, JSON.stringify({ machineId: fallbackId }))
+    return fallbackId
+  }
+}
 
 const autoLauncher = new AutoLaunch({
   name: 'Save Eyes Reminder',
@@ -296,6 +333,10 @@ ipcMain.on('minimize-to-tray', () => {
 
 ipcMain.on('quit-app', () => {
   quitApp()
+})
+
+ipcMain.handle('get-machine-id', () => {
+  return getMachineId()
 })
 
 app.whenReady().then(() => {

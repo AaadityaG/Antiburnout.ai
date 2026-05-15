@@ -18,6 +18,7 @@ export interface TimerSetting {
 
 export interface ElectronAPI {
   getAppVersion: () => Promise<string>
+  getMachineId: () => Promise<string>
   onTimerUpdate: (callback: (time: number) => void) => () => void
   onTimerReset: (callback: () => void) => () => void
   onBreakTime: (callback: (data: BreakTimeData) => void) => () => void
