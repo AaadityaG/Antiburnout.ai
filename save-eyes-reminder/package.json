@@ -1,5 +1,5 @@
 {
-  "name": "save-eyes-reminder",
+  "name": "antiburnout",
   "private": true,
   "version": "0.0.0",
   "main": "electron-dist/main.cjs",
@@ -48,8 +48,8 @@
     "wait-on": "^9.0.1"
   },
   "build": {
-    "appId": "com.save-eyes-reminder.app",
-    "productName": "Save Eyes Reminder",
+    "appId": "com.antiburnout.app",
+    "productName": "AntiBurnout",
     "directories": {
       "output": "release"
     },

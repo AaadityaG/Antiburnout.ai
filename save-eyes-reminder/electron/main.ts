@@ -88,7 +88,7 @@ function getMachineId(): string {
 }
 
 const autoLauncher = new AutoLaunch({
-  name: 'Save Eyes Reminder',
+  name: 'AntiBurnout',
   isHidden: true,
 })
 
@@ -112,6 +112,7 @@ function createWindow() {
     show: false,
     resizable: true,
     frame: false,
+    title: 'AntiBurnout',
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -189,7 +190,7 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Open Save Eyes Reminder',
+      label: 'Open AntiBurnout',
       click: () => {
         if (mainWindow) {
           mainWindow.show()
@@ -213,7 +214,7 @@ function createTray() {
     },
   ])
 
-  tray.setToolTip('Save Eyes Reminder - Next break in ' + formatTime(timeRemaining))
+  tray.setToolTip('AntiBurnout - Next break in ' + formatTime(timeRemaining))
   tray.setContextMenu(contextMenu)
 
   tray.on('click', () => {
@@ -235,7 +236,7 @@ function startBreakTimer() {
       timeRemaining -= 1000
 
       if (tray) {
-        tray.setToolTip('Save Eyes Reminder - Next break in ' + formatTime(timeRemaining))
+        tray.setToolTip('AntiBurnout - Next break in ' + formatTime(timeRemaining))
       }
 
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -278,7 +279,7 @@ function resetTimer() {
   }
   
   if (tray) {
-    tray.setToolTip(`Save Eyes Reminder - Timer reset! Next break in ${Math.round(initialTime / 60000)}:00`)
+    tray.setToolTip(`AntiBurnout - Timer reset! Next break in ${Math.round(initialTime / 60000)}:00`)
   }
 }
 

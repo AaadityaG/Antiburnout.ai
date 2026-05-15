@@ -1,4 +1,4 @@
-# Save Eyes Reminder
+# AntiBurnout
 
 A desktop application built with Electron and React that reminds you to take regular breaks to rest your eyes using the 20-20-20 rule (every 20 minutes, look at something 20 feet away for 20 seconds).
 
