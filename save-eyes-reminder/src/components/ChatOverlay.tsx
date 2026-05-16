@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import type { RootState, AppDispatch } from '../store'
 import { fetchSessions, fetchSessionMessages, deleteSession, clearAllHistory, setCurrentSessionId, clearCurrentSession } from '../store/chatSlice'
 import axios from 'axios'
+import ConfirmDialog from './ConfirmDialog'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -37,6 +38,19 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
   const [selectedModelKey, setSelectedModelKey] = useState<string>('')
   const [showHistory, setShowHistory] = useState(false)
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+    variant: 'primary' | 'danger'
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    variant: 'primary'
+  })
   // Load chat sessions when component opens
   useEffect(() => {
     if (isOpen && token) {
@@ -69,32 +83,50 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
     }
   }
   
-  const handleDeleteSession = async (sessionId: string) => {
+  const handleDeleteSession = (sessionId: string) => {
     if (!token) return
-    if (!window.confirm('Delete this conversation?')) return
     
-    try {
-      await dispatch(deleteSession({ token, sessionId })).unwrap()
-      if (activeSessionId === sessionId) {
-        setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
-        setActiveSessionId(null)
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Conversation',
+      message: 'Are you sure you want to delete this conversation? This action cannot be undone.',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await dispatch(deleteSession({ token, sessionId })).unwrap()
+          if (activeSessionId === sessionId) {
+            setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
+            setActiveSessionId(null)
+          }
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+        } catch (error) {
+          console.error('Failed to delete session:', error)
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+        }
       }
-    } catch (error) {
-      console.error('Failed to delete session:', error)
-    }
+    })
   }
   
-  const handleClearHistory = async () => {
+  const handleClearHistory = () => {
     if (!token) return
-    if (!window.confirm('Are you sure you want to clear all chat history?')) return
     
-    try {
-      await dispatch(clearAllHistory(token)).unwrap()
-      setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
-      setActiveSessionId(null)
-    } catch (error) {
-      console.error('Failed to clear history:', error)
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Clear All History',
+      message: 'Are you sure you want to clear all chat history? This action cannot be undone.',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await dispatch(clearAllHistory(token)).unwrap()
+          setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
+          setActiveSessionId(null)
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+        } catch (error) {
+          console.error('Failed to clear history:', error)
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+        }
+      }
+    })
   }
   const availableModels = user?.ai_providers || {}
   const modelKeys = Object.keys(availableModels)
@@ -173,7 +205,8 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 opacity-100 animate-in fade-in zoom-in-95">
+    <>
+      <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 opacity-100 animate-in fade-in zoom-in-95">
       <div className="w-full max-w-[800px] bg-glass-heavy border border-white/10 rounded-[32px] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
         
         {/* Header */}
@@ -358,6 +391,19 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
         </div>
       </div>
     </div>
+    
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
+    </>
   )
 }
 
