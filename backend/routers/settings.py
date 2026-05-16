@@ -1,31 +1,14 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from auth import verify_token
-from database import db
-import json
-import os
-from pathlib import Path
+from database import db, settings_db
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
-SETTINGS_FILE = Path(__file__).parent.parent / "settings.json"
-
 class UserSettings(BaseModel):
     break_interval: int = 30  # minutes
-    break_duration: int = 20  # seconds (3 minutes 40 seconds)
+    break_duration: int = 20  # seconds
     auto_start: bool = True
-
-def load_settings():
-    """Load all settings from JSON file"""
-    if SETTINGS_FILE.exists():
-        with open(SETTINGS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_settings(settings_data: dict):
-    """Save settings to JSON file"""
-    with open(SETTINGS_FILE, 'w') as f:
-        json.dump(settings_data, f, indent=2)
 
 @router.get("/user", response_model=UserSettings)
 async def get_user_settings(token: str):
@@ -36,14 +19,17 @@ async def get_user_settings(token: str):
             raise HTTPException(status_code=401, detail="Invalid token")
         
         user_id = payload.get("sub")
-        all_settings = load_settings()
         
-        # Return user's settings or defaults
-        user_settings = all_settings.get(user_id, {
-            "break_interval": 30,
-            "break_duration": 220,
-            "auto_start": True
-        })
+        # Get user's settings from MongoDB or return defaults
+        user_settings = settings_db.get_user_settings(user_id)
+        
+        if not user_settings:
+            # Return default settings
+            return UserSettings(
+                break_interval=30,
+                break_duration=20,
+                auto_start=True
+            )
         
         return UserSettings(**user_settings)
     except HTTPException:
@@ -60,16 +46,15 @@ async def update_user_settings(settings: UserSettings, token: str):
             raise HTTPException(status_code=401, detail="Invalid token")
         
         user_id = payload.get("sub")
-        all_settings = load_settings()
         
-        # Update user's settings
-        all_settings[user_id] = {
+        # Save settings to MongoDB
+        settings_data = {
             "break_interval": settings.break_interval,
             "break_duration": settings.break_duration,
             "auto_start": settings.auto_start
         }
         
-        save_settings(all_settings)
+        settings_db.save_user_settings(user_id, settings_data)
         
         return settings
     except HTTPException:

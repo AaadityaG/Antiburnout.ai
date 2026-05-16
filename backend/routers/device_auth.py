@@ -2,18 +2,14 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict
 from auth import create_access_token
-from database import db
+from database import db, settings_db
 import uuid
 from datetime import datetime
-import json
-from pathlib import Path
 from cryptography.fernet import Fernet
 import base64
 import hashlib
 
 router = APIRouter(prefix="/auth", tags=["Device Auth"])
-
-SETTINGS_FILE = Path(__file__).parent.parent / "settings.json"
 
 # Encryption utilities
 def get_encryption_key(device_id: str) -> bytes:
@@ -32,26 +28,22 @@ def decrypt_api_key(encrypted_key: str, device_id: str) -> str:
     return fernet.decrypt(encrypted_key.encode()).decode()
 
 def create_default_settings(user_id: str):
-    """Create default settings for a user if they don't exist"""
-    default_settings = {
-        "break_interval": 30,
-        "break_duration": 220,
-        "auto_start": True
-    }
-    
-    # Load existing settings
-    all_settings = {}
-    if SETTINGS_FILE.exists():
-        with open(SETTINGS_FILE, 'r') as f:
-            all_settings = json.load(f)
-    
-    # Only create if user doesn't have settings yet
-    if user_id not in all_settings:
-        all_settings[user_id] = default_settings
+    """Create default settings for a user in MongoDB if they don't exist"""
+    try:
+        # Check if user already has settings
+        existing_settings = settings_db.get_user_settings(user_id)
         
-        # Save back to file
-        with open(SETTINGS_FILE, 'w') as f:
-            json.dump(all_settings, f, indent=2)
+        # Only create if user doesn't have settings yet
+        if not existing_settings:
+            default_settings = {
+                "break_interval": 30,
+                "break_duration": 20,
+                "auto_start": True
+            }
+            settings_db.save_user_settings(user_id, default_settings)
+            print(f"[DeviceAuth] Created default settings for user: {user_id}")
+    except Exception as e:
+        print(f"[DeviceAuth] Error creating default settings: {e}")
 
 def sanitize_ai_providers(providers: dict) -> dict:
     """Remove encrypted API keys from providers for safe response"""
