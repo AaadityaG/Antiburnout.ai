@@ -46,7 +46,7 @@ export const settingsSlice = createSlice({
   reducers: {
     clearSettings: (state) => {
       state.breakInterval = 30
-      state.breakDuration = 220
+      state.breakDuration = 20
       state.autoStart = true
       state.isLoading = false
       state.error = null

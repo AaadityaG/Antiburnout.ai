@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { fetchSettings, updateSettings } from './store/settingsSlice'
+import { fetchSettings, updateSettings, clearSettings } from './store/settingsSlice'
+import { logout as logoutAction } from './store/authSlice'
 import type { RootState, AppDispatch } from './store'
 import ProfileOverlay from './components/ProfileOverlay'
 import LoginModal from './components/LoginModal'
@@ -26,20 +27,53 @@ function App() {
   // Fetch user settings when authenticated
   useEffect(() => {
     if (isAuthenticated && token) {
+      console.log('Fetching settings from backend...')
       dispatch(fetchSettings(token))
     }
   }, [isAuthenticated, token, dispatch])
 
-  // Sync timer ONLY when settings are initially loaded from backend (not on every change)
-  const hasInitializedTimer = useRef(false)
+  // Handle logout - reset everything
   useEffect(() => {
-    // Only sync on initial load, not on user-initiated changes
-    if (!hasInitializedTimer.current && settings.breakInterval > 0) {
+    if (!isAuthenticated) {
+      // User logged out - reset all states
+      dispatch(clearSettings())
+      setTimeRemaining(30 * 60 * 1000)  // Reset to default
+      setBreakTimeLeft(20)  // Reset to default
+      setIsPaused(false)
+      setIsBreakActive(false)
+      hasInitializedTimer.current = false  // Allow re-initialization on next login
+      
+      // Stop Electron timer
+      window.electronAPI?.sendResetTimer()
+      
+      console.log('Logout complete - all states reset')
+    }
+  }, [isAuthenticated, dispatch])
+
+  // Sync timer ONLY when settings are loaded from backend
+  const hasInitializedTimer = useRef(false)
+  const prevIsLoading = useRef<boolean | null>(null)
+  
+  useEffect(() => {
+    // Detect when loading finishes (transitions from true to false)
+    const loadingJustFinished = prevIsLoading.current === true && !settings.isLoading
+    prevIsLoading.current = settings.isLoading
+    
+    // Only initialize timer when settings fetch completes
+    if (isAuthenticated && token && !hasInitializedTimer.current && loadingJustFinished && settings.breakInterval > 0) {
+      console.log('Starting timer with backend settings:', settings.breakInterval, 'minutes')
       setTimeRemaining(settings.breakInterval * 60 * 1000)
       setBreakTimeLeft(settings.breakDuration)
       hasInitializedTimer.current = true
+      
+      // Send settings to Electron to start the timer with backend values
+      window.electronAPI?.sendUpdateTimerSetting({
+        interval: settings.breakInterval,
+        duration: settings.breakDuration,
+        autoStart: settings.autoStart
+      })
     }
-  }, [settings.breakInterval, settings.breakDuration])
+  }, [isAuthenticated, token, settings.breakInterval, settings.breakDuration, settings.autoStart, settings.isLoading])
 
   const handleApplySettings = useCallback((interval: number, duration: number) => {
     dispatch(updateSettings({
