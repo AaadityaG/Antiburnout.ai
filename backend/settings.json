@@ -3,5 +3,10 @@
     "break_interval": 20,
     "break_duration": 20,
     "auto_start": true
+  },
+  "1c1b629b-9f17-4551-a2ea-ff9b8bf7043e": {
+    "break_interval": 30,
+    "break_duration": 220,
+    "auto_start": true
   }
 }

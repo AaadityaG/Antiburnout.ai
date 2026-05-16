@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import device_auth, settings
+from routers import device_auth, settings, chat
 
 app = FastAPI(
-    title="Save Eyes Reminder API",
-    description="Backend API for Save Eyes Reminder application",
+    title="AntiBurnout API",
+    description="Backend API for AntiBurnout desktop application",
     version="1.0.0"
 )
 
@@ -20,10 +20,11 @@ app.add_middleware(
 # Include routers
 app.include_router(device_auth.router)
 app.include_router(settings.router)
+app.include_router(chat.router)
 
 @app.get("/")
 async def root():
-    return {"message": "Save Eyes Reminder API is running"}
+    return {"message": "AntiBurnout API is running"}
 
 @app.get("/health")
 async def health_check():

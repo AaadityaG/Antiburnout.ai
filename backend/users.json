@@ -24,12 +24,29 @@
     "name": "Aditya G",
     "email": "adiya@gmail.com",
     "ai_providers": {
-      "anthropic": {
-        "provider": "anthropic",
-        "model": "claude-3-5-sonnet-20241022",
-        "api_key": "gAAAAABqBvD12sc9050-0UtTCGsZfI85eowVayTDjRtOk5nETiQuUgh96E5SqbaNn9bMXZLYCDngJneAfokbPV5l3YbLe94qJg=="
+      "model_1": {
+        "provider": "openrouter",
+        "model": "openai/gpt-4o-mini",
+        "api_key": "gAAAAABqCEH46gtUmdgG_A2-8cV-EXNc0ZPWEjLCiItGUnhg02Wzq-4kvTGjVGvwRAHArrId4OkTBxjBosRrgTgDI3-Y7xRBMq0gSGka6J3yv6o68IJ9N3016y0Ya8Tnit4o1HqG-ypvjsiacwXz3SbvjQnFQC4ipHaJYotHUVkS6y6RHuOk5NQ="
+      },
+      "model_2": {
+        "provider": "openrouter",
+        "model": "anthropic/claude-3-haiku",
+        "api_key": "gAAAAABqCEH4sOIPnhzdu_hGB8mOn9UjN_R4T9CwKA9i97yZ7dVdR2xjDxY3WXAg_NhN9UpoEdgqCNJNxnsdRMQ23AFuGjLQpCqR437PHorlB96QjjwwJ7aVSWf4LSDoFXHvw_3fPAxFs9IW9KDqce40GXLsHDseUpwWVS68136w7YfKj9iTe30="
+      },
+      "model_4": {
+        "provider": "openrouter",
+        "model": "meta-llama/llama-3.1-70b-instruct",
+        "api_key": "gAAAAABqCEH4kfXSHNUxOe7GJbtu6xCzteuErVP7O-MK5qXkfOB965vM5tivwkDwlNjad9IcUeExespHWD07ncrLvfd-CDQ-uDBfrHMXhIaBGhOytsqmvxZnKiIFzhBvtzQouMgEp3kpU6yu0Y1V-XrYOayjxLIMeDThRFRu0wGmoVXhCfu47fA="
       }
     },
     "profile_completed": true
+  },
+  {
+    "id": "1c1b629b-9f17-4551-a2ea-ff9b8bf7043e",
+    "device_id": "browser_1778920931442_zfnaq1ykf",
+    "device_name": "Win32",
+    "created_at": "2026-05-16T08:42:11.459758",
+    "last_login": "2026-05-16T08:42:11.459776"
   }
 ]

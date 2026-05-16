@@ -8,24 +8,22 @@ import { useToast } from '../context/ToastContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-const AI_PROVIDERS = {
-  openai: {
-    name: 'OpenAI',
-    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
-  },
-  anthropic: {
-    name: 'Anthropic (Claude)',
-    models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
-  },
-  google: {
-    name: 'Google (Gemini)',
-    models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash']
-  },
-  mistral: {
-    name: 'Mistral AI',
-    models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest']
-  }
-}
+// Curated OpenRouter models - top free and premium options
+const OPENROUTER_MODELS = [
+  // Free models (recommended for getting started)
+  { id: 'meta-llama/llama-3-8b-instruct:free', name: 'Llama 3 8B (Free)', provider: 'Meta', isFree: true },
+  { id: 'google/gemma-7b-it:free', name: 'Gemma 7B (Free)', provider: 'Google', isFree: true },
+  { id: 'microsoft/phi-3-medium-128k-instruct:free', name: 'Phi-3 Medium (Free)', provider: 'Microsoft', isFree: true },
+  
+  // Premium models (best quality)
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', isFree: false },
+  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', isFree: false },
+  { id: 'google/gemini-flash-1.5', name: 'Gemini Flash 1.5', provider: 'Google', isFree: false },
+  { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'Meta', isFree: false },
+]
+
+// Option to add custom model
+const CUSTOM_MODEL_OPTION = { id: 'custom', name: 'Custom Model (Advanced)', provider: 'Custom', isFree: false }
 
 function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const dispatch = useDispatch<AppDispatch>()
@@ -36,7 +34,9 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const [profileEmail, setProfileEmail] = useState('')
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [showAIAddForm, setShowAIAddForm] = useState(false)
-  const [aiProviderInput, setAiProviderInput] = useState({ provider: '', model: '', api_key: '' })
+  const [aiProviderInput, setAiProviderInput] = useState({ provider: 'openrouter', model: '', api_key: '' })
+  const [showCustomModelInput, setShowCustomModelInput] = useState(false)
+  const [customModelId, setCustomModelId] = useState('')
   
   // Dialog states
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
@@ -74,21 +74,34 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   }, [token, profileName, profileEmail, dispatch])
 
   const saveAIProvider = useCallback(async () => {
-    if (!token || !aiProviderInput.provider || !aiProviderInput.model || !aiProviderInput.api_key) {
-      alert('Please fill in all fields')
+    if (!token || !aiProviderInput.api_key) {
+      error('Missing API Key', 'Please provide your OpenRouter API key')
       return
     }
     
     setIsSavingProfile(true)
     try {
-      const providerKey = aiProviderInput.provider
-      const aiProviders = {
-        [providerKey]: {
-          provider: aiProviderInput.provider,
-          model: aiProviderInput.model,
+      // Create entries for multiple models with the same API key
+      // Using most reliable and widely available models on OpenRouter
+      const selectedModels = showCustomModelInput && customModelId 
+        ? [customModelId]  // Use custom model if provided
+        : [
+            'openai/gpt-4o-mini',  // Most reliable, low cost
+            'anthropic/claude-3-haiku',  // Fast and affordable
+            // 'google/gemini-flash-1.5',  // Good balance
+            'meta-llama/llama-3.1-70b-instruct'  // Powerful open source
+          ]
+      
+      // Create provider entries for each model
+      const aiProviders: any = {}
+      selectedModels.forEach((model, index) => {
+        const key = showCustomModelInput && customModelId ? 'custom' : `model_${index + 1}`
+        aiProviders[key] = {
+          provider: 'openrouter',
+          model: model,
           api_key: aiProviderInput.api_key
         }
-      }
+      })
       
       const response = await axios.put(`${API_URL}/auth/profile`, {
         ai_providers: aiProviders
@@ -102,16 +115,18 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         profile_completed: updatedUser.profile_completed
       }))
       
-      setAiProviderInput({ provider: '', model: '', api_key: '' })
+      setAiProviderInput({ provider: 'openrouter', model: '', api_key: '' })
       setShowAIAddForm(false)
-      success('Provider Connected', 'AI provider has been added successfully')
+      setShowCustomModelInput(false)
+      setCustomModelId('')
+      success('AI Providers Connected', `${selectedModels.length} models added successfully. You can switch between them while chatting!`)
     } catch (err) {
       console.error('Failed to save AI provider:', err)
-      error('Connection Failed', 'Could not connect to AI provider')
+      error('Connection Failed', 'Could not save AI providers')
     } finally {
       setIsSavingProfile(false)
     }
-  }, [token, aiProviderInput, dispatch])
+  }, [token, aiProviderInput, dispatch, success, error, showCustomModelInput, customModelId])
 
   const deleteAIProvider = useCallback((providerKey: string) => {
     setProviderToDelete(providerKey)
@@ -203,57 +218,38 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
                 {showAIAddForm && (
                   <div className="p-5 bg-white/5 border border-white/10 rounded-2xl mb-6 animate-in slide-in-from-top-4 duration-300">
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="flex flex-col gap-2">
-                        <label className="text-[10px] uppercase tracking-wider text-green-200/50">Provider</label>
-                        <select 
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-accent transition-all"
-                          value={aiProviderInput.provider}
-                          onChange={(e) => setAiProviderInput({ ...aiProviderInput, provider: e.target.value, model: '' })}
-                        >
-                          <option value="" className="bg-bg-dark">Select...</option>
-                          {Object.entries(AI_PROVIDERS).map(([key, provider]) => (
-                            <option key={key} value={key} className="bg-bg-dark">{provider.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {aiProviderInput.provider && (
-                        <div className="flex flex-col gap-2">
-                          <label className="text-[10px] uppercase tracking-wider text-green-200/50">Model</label>
-                          <select 
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-accent transition-all"
-                            value={aiProviderInput.model}
-                            onChange={(e) => setAiProviderInput({ ...aiProviderInput, model: e.target.value })}
-                          >
-                            <option value="" className="bg-bg-dark">Select...</option>
-                            {AI_PROVIDERS[aiProviderInput.provider as keyof typeof AI_PROVIDERS].models.map(model => (
-                              <option key={model} value={model} className="bg-bg-dark">{model}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+                    <div className="mb-4 p-3 bg-accent/10 border border-accent/20 rounded-xl">
+                      <p className="text-xs text-green-200/70">🔑 Paste your OpenRouter API key below. This will automatically add 4 models (including free options) that you can switch between while chatting!</p>
+                      <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline mt-1 inline-block">Get your free API key →</a>
                     </div>
+                    
                     <div className="flex flex-col gap-2 mb-6">
-                      <label className="text-[10px] uppercase tracking-wider text-green-200/50">API Key</label>
+                      <label className="text-[10px] uppercase tracking-wider text-green-200/50">OpenRouter API Key</label>
                       <input 
                         type="password"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-accent transition-all"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-accent transition-all"
                         value={aiProviderInput.api_key}
                         onChange={(e) => setAiProviderInput({ ...aiProviderInput, api_key: e.target.value })}
-                        placeholder="sk-..."
+                        placeholder="sk-or-v1-..."
                       />
+                      <p className="text-[10px] text-green-200/40">Models to be added: GPT-4o Mini, Claude 3 Haiku, Gemini Flash 1.5, Llama 3.1 70B</p>
                     </div>
                     <div className="flex gap-3">
                       <button 
                         className="flex-1 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-accent hover:text-primary transition-all duration-300 disabled:opacity-50 cursor-pointer"
                         onClick={saveAIProvider}
-                        disabled={isSavingProfile || !aiProviderInput.provider || !aiProviderInput.model || !aiProviderInput.api_key}
+                        disabled={isSavingProfile || !aiProviderInput.api_key}
                       >
-                        {isSavingProfile ? 'Saving...' : 'Connect'}
+                        {isSavingProfile ? 'Saving...' : 'Connect All Models'}
                       </button>
                       <button 
                         className="w-10 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer"
-                        onClick={() => setShowAIAddForm(false)}
+                        onClick={() => {
+                          setShowAIAddForm(false)
+                          setShowCustomModelInput(false)
+                          setCustomModelId('')
+                          setAiProviderInput({ provider: 'openrouter', model: '', api_key: '' })
+                        }}
                       >
                         ✕
                       </button>
@@ -266,7 +262,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     Object.entries(user.ai_providers).map(([key, provider]) => (
                       <div key={key} className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl flex justify-between items-center group hover:border-accent/30 transition-all duration-300">
                         <div className="flex flex-col items-start">
-                          <span className="text-sm font-medium text-white">{AI_PROVIDERS[key as keyof typeof AI_PROVIDERS]?.name || key}</span>
+                          <span className="text-sm font-medium text-white">OpenRouter</span>
                           <span className="text-[10px] font-mono text-green-200/40 mt-0.5">{provider.model}</span>
                         </div>
                         <div className="flex items-center gap-3">
@@ -366,7 +362,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       <ConfirmDialog
         isOpen={showDeleteDialog}
         title="Remove AI Provider"
-        message={`Are you sure you want to remove ${AI_PROVIDERS[providerToDelete as keyof typeof AI_PROVIDERS]?.name || providerToDelete}? This action cannot be undone.`}
+        message="Are you sure you want to remove this AI provider? This action cannot be undone."
         confirmText="Remove"
         cancelText="Cancel"
         confirmVariant="danger"
