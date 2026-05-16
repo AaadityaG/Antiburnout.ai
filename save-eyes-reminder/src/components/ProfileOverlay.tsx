@@ -303,7 +303,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-lg font-light focus:outline-none focus:border-accent transition-all placeholder:text-white/10"
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
-                      placeholder="asdfasdf"
+                      placeholder="name"
                     />
                   </div>
                   <div className="flex flex-col gap-2">
