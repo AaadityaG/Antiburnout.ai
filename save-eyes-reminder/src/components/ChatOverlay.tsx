@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useSelector } from 'react-redux'
-import type { RootState } from '../store'
+import { useSelector, useDispatch } from 'react-redux'
+import type { RootState, AppDispatch } from '../store'
+import { fetchSessions, fetchSessionMessages, deleteSession, clearAllHistory, setCurrentSessionId, clearCurrentSession } from '../store/chatSlice'
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL
 
 interface ChatOverlayProps {
   isOpen: boolean
@@ -24,62 +25,75 @@ interface HistoryMessage {
 }
 
 function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
+  const dispatch = useDispatch<AppDispatch>()
   const { token, user } = useSelector((state: RootState) => state.auth)
+  const { sessions, currentSession, isLoading } = useSelector((state: RootState) => state.chat)
+  
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
     { role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }
   ])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [selectedModelKey, setSelectedModelKey] = useState<string>('')
-  const [chatHistory, setChatHistory] = useState<HistoryMessage[]>([])
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  // Load chat history when component opens
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  // Load chat sessions when component opens
   useEffect(() => {
-    if (isOpen && token && !showHistory) {
-      loadChatHistory()
-    }
-  }, [isOpen, token])
-  
-  const loadChatHistory = async () => {
-    if (!token) return
-    
-    setIsLoadingHistory(true)
-    try {
-      const response = await axios.get(`${API_URL}/chat/history/`, {
-        params: { token, limit: 50 }
+    if (isOpen && token) {
+      console.log('[ChatOverlay] Fetching sessions...')
+      dispatch(fetchSessions(token)).then((result) => {
+        console.log('[ChatOverlay] Sessions loaded:', result.payload)
+      }).catch((error) => {
+        console.error('[ChatOverlay] Failed to fetch sessions:', error)
       })
-      setChatHistory(response.data)
-      console.log(`Loaded ${response.data.length} chat history messages`)
+    }
+  }, [isOpen, token, dispatch])
+  
+  const loadSessionMessages = async (sessionId: string) => {
+    if (!token) return
+    
+    try {
+      const session = await dispatch(fetchSessionMessages({ token, sessionId })).unwrap()
+      
+      // Convert session messages to chat format
+      const chatMessages = session.messages.flatMap((msg: any) => [
+        { role: 'user' as const, content: msg.message },
+        { role: 'assistant' as const, content: msg.response }
+      ])
+      
+      setMessages(chatMessages)
+      setActiveSessionId(sessionId)
+      setShowHistory(false)
     } catch (error) {
-      console.error('Failed to load chat history:', error)
-    } finally {
-      setIsLoadingHistory(false)
+      console.error('Failed to load session:', error)
     }
   }
   
-  const loadHistoryConversation = (historyItem: HistoryMessage) => {
-    setMessages([
-      { role: 'user', content: historyItem.message },
-      { role: 'assistant', content: historyItem.response }
-    ])
-    setShowHistory(false)
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!token) return
+    if (!window.confirm('Delete this conversation?')) return
+    
+    try {
+      await dispatch(deleteSession({ token, sessionId })).unwrap()
+      if (activeSessionId === sessionId) {
+        setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
+        setActiveSessionId(null)
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error)
+    }
   }
   
-  const clearHistory = async () => {
+  const handleClearHistory = async () => {
     if (!token) return
-    
     if (!window.confirm('Are you sure you want to clear all chat history?')) return
     
     try {
-      await axios.delete(`${API_URL}/chat/history/clear`, {
-        params: { token }
-      })
-      setChatHistory([])
-      alert('Chat history cleared')
+      await dispatch(clearAllHistory(token)).unwrap()
+      setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
+      setActiveSessionId(null)
     } catch (error) {
       console.error('Failed to clear history:', error)
-      alert('Failed to clear history')
     }
   }
   const availableModels = user?.ai_providers || {}
@@ -110,11 +124,12 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
         content: msg.content
       }))
 
-      // Call backend API
+      // Call backend API with session_id
       const response = await axios.post(`${API_URL}/chat/send`, {
         message: userMessage,
         conversation_history: conversationHistory,
-        model_key: selectedModelKey  // Send selected model
+        model_key: selectedModelKey,
+        session_id: activeSessionId || undefined  // Send session_id if exists
       }, {
         params: { token }
       })
@@ -124,6 +139,13 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
         role: 'assistant', 
         content: response.data.response
       }])
+      
+      // Update active session ID from response (new session created)
+      if (response.data.session_id && !activeSessionId) {
+        setActiveSessionId(response.data.session_id)
+        // Refresh sessions list
+        dispatch(fetchSessions(token))
+      }
     } catch (error: any) {
       console.error('Chat error:', error)
       const errorMessage = error.response?.data?.detail || 'Sorry, I couldn\'t process that. Please try again.'
@@ -134,6 +156,11 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
     } finally {
       setIsTyping(false)
     }
+  }
+  
+  const startNewChat = () => {
+    setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
+    setActiveSessionId(null)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -185,6 +212,18 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
                 <polyline points="12,6 12,12 16,14"/>
               </svg>
             </button>
+            
+            {/* New Chat Button */}
+            <button
+              className="w-10 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer"
+              onClick={startNewChat}
+              title="Start New Chat"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
           </div>
           <button 
             className="w-10 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer"
@@ -201,18 +240,18 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
               <h3 className="text-lg font-light text-white">Chat History</h3>
               <button
                 className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-                onClick={clearHistory}
-                disabled={chatHistory.length === 0}
+                onClick={handleClearHistory}
+                disabled={sessions.length === 0}
               >
                 Clear All History
               </button>
             </div>
             
-            {isLoadingHistory ? (
+            {isLoading ? (
               <div className="flex justify-center py-12">
                 <div className="text-green-200/50">Loading history...</div>
               </div>
-            ) : chatHistory.length === 0 ? (
+            ) : sessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-green-200/40">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <circle cx="12" cy="12" r="10"/>
@@ -222,20 +261,37 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
               </div>
             ) : (
               <div className="space-y-3">
-                {chatHistory.map((item) => (
+                {sessions.map((session) => (
                   <div
-                    key={item.id}
+                    key={session.id}
                     className="p-4 bg-white/5 border border-white/10 rounded-2xl hover:border-accent/30 transition-all cursor-pointer group"
-                    onClick={() => loadHistoryConversation(item)}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-[10px] text-accent font-medium">{item.model}</span>
-                      <span className="text-[10px] text-green-200/40">
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </span>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-[10px] text-accent font-medium">{session.message_count} messages</span>
+                        <span className="text-[10px] text-green-200/40">•</span>
+                        <span className="text-[10px] text-green-200/40">
+                          {new Date(session.updated_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <button
+                        className="text-[10px] text-red-400/60 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteSession(session.id)
+                        }}
+                      >
+                        Delete
+                      </button>
                     </div>
-                    <p className="text-sm text-white line-clamp-2 mb-1">{item.message}</p>
-                    <p className="text-xs text-green-200/60 line-clamp-1">{item.response}</p>
+                    <p className="text-sm text-white line-clamp-2 mb-1">{session.first_message}</p>
+                    <p className="text-xs text-green-200/60 line-clamp-1">{session.last_message}</p>
+                    <div 
+                      className="mt-3 pt-3 border-t border-white/5 flex justify-center"
+                      onClick={() => loadSessionMessages(session.id)}
+                    >
+                      <span className="text-xs text-accent/80 hover:text-accent transition-colors">Load Conversation</span>
+                    </div>
                   </div>
                 ))}
               </div>

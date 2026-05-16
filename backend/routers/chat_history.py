@@ -6,33 +6,74 @@ from database import db, chat_history_db
 
 router = APIRouter(prefix="/chat/history", tags=["Chat History"])
 
-class ChatHistoryResponse(BaseModel):
+class ChatSessionResponse(BaseModel):
     id: str
+    message_count: int
+    first_message: str
+    last_message: str
+    models_used: list
+    created_at: str
+    updated_at: str
+
+class ChatMessageResponse(BaseModel):
     message: str
     response: str
     model: str
+    provider_key: Optional[str] = None
+    timestamp: str
+
+class SessionDetailResponse(BaseModel):
+    id: str
+    messages: List[ChatMessageResponse]
     created_at: str
+    updated_at: str
 
 class ClearHistoryResponse(BaseModel):
     deleted_count: int
     message: str
 
-@router.get("/", response_model=List[ChatHistoryResponse])
-async def get_chat_history(token: str, limit: int = 50):
-    """Get chat history for authenticated user"""
+@router.get("/", response_model=List[ChatSessionResponse])
+async def get_chat_history(token: str, limit: int = 20):
+    """Get chat session list for authenticated user"""
     try:
         payload = verify_token(token)
         if not payload:
             raise HTTPException(status_code=401, detail="Invalid token")
         
         user_id = payload.get("sub")
-        messages = chat_history_db.get_user_conversations(user_id, limit)
+        sessions = chat_history_db.get_user_sessions(user_id, limit)
         
-        return messages
+        return sessions
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        print(f"Error in get_chat_history: {str(e)}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get chat history: {str(e)}")
+
+@router.get("/{session_id}", response_model=SessionDetailResponse)
+async def get_session_messages(token: str, session_id: str):
+    """Get all messages in a specific session"""
+    try:
+        payload = verify_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        user_id = payload.get("sub")
+        session = chat_history_db.get_session_messages(user_id, session_id)
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        return session
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error in get_session_messages: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to get session: {str(e)}")
 
 @router.delete("/clear", response_model=ClearHistoryResponse)
 async def clear_chat_history(token: str):
@@ -54,22 +95,22 @@ async def clear_chat_history(token: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to clear chat history: {str(e)}")
 
-@router.delete("/{message_id}")
-async def delete_message(token: str, message_id: str):
-    """Delete a specific chat message"""
+@router.delete("/{session_id}")
+async def delete_session(token: str, session_id: str):
+    """Delete a specific chat session"""
     try:
         payload = verify_token(token)
         if not payload:
             raise HTTPException(status_code=401, detail="Invalid token")
         
         user_id = payload.get("sub")
-        success = chat_history_db.delete_conversation(user_id, message_id)
+        success = chat_history_db.delete_session(user_id, session_id)
         
         if not success:
-            raise HTTPException(status_code=404, detail="Message not found")
+            raise HTTPException(status_code=404, detail="Session not found")
         
-        return {"message": "Message deleted successfully"}
+        return {"message": "Session deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete message: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")

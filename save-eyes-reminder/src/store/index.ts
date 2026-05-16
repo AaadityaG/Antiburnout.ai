@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './authSlice'
 import settingsReducer from './settingsSlice'
+import chatReducer from './chatSlice'
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    settings: settingsReducer
+    settings: settingsReducer,
+    chat: chatReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

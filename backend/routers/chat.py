@@ -17,11 +17,13 @@ class ChatRequest(BaseModel):
     message: str
     conversation_history: Optional[List[Message]] = []
     model_key: Optional[str] = None  # Which model to use (e.g., "model_1", "model_2")
+    session_id: Optional[str] = None  # Continue existing session or create new
 
 class ChatResponse(BaseModel):
     response: str
     model: str
     provider: str
+    session_id: str  # Return session ID for future messages
 
 def build_system_prompt(user: dict) -> str:
     """Build personalized system prompt for AntiBurnout Assistant"""
@@ -146,22 +148,39 @@ async def send_message(token: str, request: ChatRequest):
             
             print(f"Successfully got response from {provider_config['model']}")
             
-            # Save to chat history
+            # Save to chat history (session-based)
             try:
-                chat_history_db.save_message(
-                    user_id=user_id,
-                    message=request.message,
-                    response=ai_response,
-                    model=provider_config["model"],
-                    provider_key=provider_key
-                )
+                if request.session_id:
+                    # Add to existing session
+                    chat_history_db.add_message_to_session(
+                        user_id=user_id,
+                        session_id=request.session_id,
+                        message=request.message,
+                        response=ai_response,
+                        model=provider_config["model"],
+                        provider_key=provider_key
+                    )
+                    session_id = request.session_id
+                else:
+                    # Create new session
+                    session_doc = chat_history_db.create_session(
+                        user_id=user_id,
+                        first_message=request.message,
+                        first_response=ai_response,
+                        model=provider_config["model"],
+                        provider_key=provider_key
+                    )
+                    session_id = session_doc["id"]
+                    
             except Exception as e:
                 print(f"Warning: Failed to save chat history: {e}")
+                session_id = ""
             
             return ChatResponse(
                 response=ai_response,
                 model=provider_config["model"],
-                provider=provider_config.get("provider", "openrouter")
+                provider=provider_config.get("provider", "openrouter"),
+                session_id=session_id
             )
             
     except HTTPException:

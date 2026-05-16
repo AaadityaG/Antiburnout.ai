@@ -1,5 +1,6 @@
 import os
 from typing import Optional
+from datetime import datetime
 from pydantic import BaseModel
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -175,79 +176,144 @@ class ChatHistoryDB:
     def __init__(self):
         pass
 
-    def save_message(self, user_id: str, message: str, response: str, model: str, provider_key: str = None) -> dict:
-        """Save a chat message and response"""
+    def create_session(self, user_id: str, first_message: str, first_response: str, model: str, provider_key: str = None) -> dict:
+        """Create a new chat session with first message"""
         from bson import ObjectId
         from datetime import datetime
         
         try:
-            chat_doc = {
+            session_doc = {
                 "user_id": ObjectId(user_id),
-                "message": message,
-                "response": response,
-                "model": model,
-                "provider_key": provider_key,
+                "messages": [
+                    {
+                        "message": first_message,
+                        "response": first_response,
+                        "model": model,
+                        "provider_key": provider_key,
+                        "timestamp": datetime.utcnow()
+                    }
+                ],
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
             
-            result = chat_history_collection.insert_one(chat_doc)
-            chat_doc["id"] = str(result.inserted_id)
-            chat_doc.pop("_id", None)
-            chat_doc.pop("user_id", None)
+            result = chat_history_collection.insert_one(session_doc)
+            session_doc["id"] = str(result.inserted_id)
+            session_doc.pop("_id", None)
+            session_doc.pop("user_id", None)
             
-            print(f"[ChatHistory] Saved message for user {user_id}")
-            return chat_doc
+            print(f"[ChatHistory] Created new session for user {user_id}")
+            return session_doc
         except Exception as e:
-            print(f"[ChatHistory] Error saving message: {e}")
+            print(f"[ChatHistory] Error creating session: {e}")
             raise
 
-    def get_user_conversations(self, user_id: str, limit: int = 50) -> list:
-        """Get all conversations for a user, grouped by session"""
+    def add_message_to_session(self, user_id: str, session_id: str, message: str, response: str, model: str, provider_key: str = None) -> dict:
+        """Add a message to existing session"""
+        from bson import ObjectId
+        from datetime import datetime
+        
+        try:
+            result = chat_history_collection.update_one(
+                {"_id": ObjectId(session_id), "user_id": ObjectId(user_id)},
+                {
+                    "$push": {
+                        "messages": {
+                            "message": message,
+                            "response": response,
+                            "model": model,
+                            "provider_key": provider_key,
+                            "timestamp": datetime.utcnow()
+                        }
+                    },
+                    "$set": {"updated_at": datetime.utcnow()}
+                }
+            )
+            
+            print(f"[ChatHistory] Added message to session {session_id}")
+            return {"success": True}
+        except Exception as e:
+            print(f"[ChatHistory] Error adding message: {e}")
+            raise
+
+    def get_user_sessions(self, user_id: str, limit: int = 20) -> list:
+        """Get all chat sessions for a user"""
         from bson import ObjectId
         
         try:
-            print(f"[ChatHistory] Getting conversations for user {user_id}")
+            print(f"[ChatHistory] Getting sessions for user {user_id}")
             
-            # Get all messages for user, sorted by date
-            messages = list(
+            sessions = list(
                 chat_history_collection.find({"user_id": ObjectId(user_id)})
-                .sort("created_at", -1)
+                .sort("updated_at", -1)
                 .limit(limit)
             )
             
-            # Convert ObjectId to string and format
-            formatted_messages = []
-            for msg in messages:
-                formatted_messages.append({
-                    "id": str(msg["_id"]),
-                    "message": msg["message"],
-                    "response": msg["response"],
-                    "model": msg.get("model", "unknown"),
-                    "provider_key": msg.get("provider_key"),
-                    "created_at": msg["created_at"].isoformat()
+            formatted_sessions = []
+            for session in sessions:
+                formatted_sessions.append({
+                    "id": str(session["_id"]),
+                    "message_count": len(session.get("messages", [])),
+                    "first_message": session["messages"][0]["message"] if session.get("messages") else "",
+                    "last_message": session["messages"][-1]["message"] if session.get("messages") else "",
+                    "models_used": list(set(msg.get("model", "unknown") for msg in session.get("messages", []))),
+                    "created_at": session["created_at"].isoformat(),
+                    "updated_at": session["updated_at"].isoformat()
                 })
             
-            print(f"[ChatHistory] Found {len(formatted_messages)} messages")
-            return formatted_messages
+            print(f"[ChatHistory] Found {len(formatted_sessions)} sessions")
+            return formatted_sessions
         except Exception as e:
-            print(f"[ChatHistory] Error getting conversations: {e}")
+            print(f"[ChatHistory] Error getting sessions: {e}")
             return []
 
-    def delete_conversation(self, user_id: str, message_id: str) -> bool:
-        """Delete a specific message"""
+    def get_session_messages(self, user_id: str, session_id: str) -> Optional[dict]:
+        """Get all messages in a specific session"""
+        from bson import ObjectId
+        
+        try:
+            session = chat_history_collection.find_one({
+                "_id": ObjectId(session_id),
+                "user_id": ObjectId(user_id)
+            })
+            
+            if session:
+                # Convert messages timestamp to ISO format
+                formatted_messages = []
+                for msg in session.get("messages", []):
+                    formatted_messages.append({
+                        "message": msg["message"],
+                        "response": msg["response"],
+                        "model": msg.get("model", "unknown"),
+                        "provider_key": msg.get("provider_key"),
+                        "timestamp": msg["timestamp"].isoformat() if isinstance(msg["timestamp"], datetime) else msg["timestamp"]
+                    })
+                
+                return {
+                    "id": str(session["_id"]),
+                    "messages": formatted_messages,
+                    "created_at": session["created_at"].isoformat(),
+                    "updated_at": session["updated_at"].isoformat()
+                }
+            return None
+        except Exception as e:
+            print(f"[ChatHistory] Error getting session: {e}")
+            return None
+
+    def delete_session(self, user_id: str, session_id: str) -> bool:
+        """Delete a specific chat session"""
         from bson import ObjectId
         
         try:
             result = chat_history_collection.delete_one({
-                "_id": ObjectId(message_id),
+                "_id": ObjectId(session_id),
                 "user_id": ObjectId(user_id)
             })
             
-            print(f"[ChatHistory] Deleted message {message_id}")
+            print(f"[ChatHistory] Deleted session {session_id}")
             return result.deleted_count > 0
         except Exception as e:
-            print(f"[ChatHistory] Error deleting message: {e}")
+            print(f"[ChatHistory] Error deleting session: {e}")
             return False
 
     def clear_user_history(self, user_id: str) -> int:
@@ -256,7 +322,7 @@ class ChatHistoryDB:
         
         try:
             result = chat_history_collection.delete_many({"user_id": ObjectId(user_id)})
-            print(f"[ChatHistory] Cleared {result.deleted_count} messages for user {user_id}")
+            print(f"[ChatHistory] Cleared {result.deleted_count} sessions for user {user_id}")
             return result.deleted_count
         except Exception as e:
             print(f"[ChatHistory] Error clearing history: {e}")
