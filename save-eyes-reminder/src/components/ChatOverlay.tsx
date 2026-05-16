@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import type { RootState } from '../store'
 import axios from 'axios'
@@ -15,6 +15,14 @@ interface ChatMessage {
   content: string
 }
 
+interface HistoryMessage {
+  id: string
+  message: string
+  response: string
+  model: string
+  created_at: string
+}
+
 function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
   const { token, user } = useSelector((state: RootState) => state.auth)
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
@@ -23,8 +31,57 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [selectedModelKey, setSelectedModelKey] = useState<string>('')
+  const [chatHistory, setChatHistory] = useState<HistoryMessage[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  // Load chat history when component opens
+  useEffect(() => {
+    if (isOpen && token && !showHistory) {
+      loadChatHistory()
+    }
+  }, [isOpen, token])
   
-  // Get available models from user's AI providers
+  const loadChatHistory = async () => {
+    if (!token) return
+    
+    setIsLoadingHistory(true)
+    try {
+      const response = await axios.get(`${API_URL}/chat/history/`, {
+        params: { token, limit: 50 }
+      })
+      setChatHistory(response.data)
+      console.log(`Loaded ${response.data.length} chat history messages`)
+    } catch (error) {
+      console.error('Failed to load chat history:', error)
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
+  
+  const loadHistoryConversation = (historyItem: HistoryMessage) => {
+    setMessages([
+      { role: 'user', content: historyItem.message },
+      { role: 'assistant', content: historyItem.response }
+    ])
+    setShowHistory(false)
+  }
+  
+  const clearHistory = async () => {
+    if (!token) return
+    
+    if (!window.confirm('Are you sure you want to clear all chat history?')) return
+    
+    try {
+      await axios.delete(`${API_URL}/chat/history/clear`, {
+        params: { token }
+      })
+      setChatHistory([])
+      alert('Chat history cleared')
+    } catch (error) {
+      console.error('Failed to clear history:', error)
+      alert('Failed to clear history')
+    }
+  }
   const availableModels = user?.ai_providers || {}
   const modelKeys = Object.keys(availableModels)
   
@@ -116,6 +173,18 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
                 ))}
               </select>
             )}
+            
+            {/* History Button */}
+            <button
+              className="w-10 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer"
+              onClick={() => setShowHistory(!showHistory)}
+              title="View Chat History"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12,6 12,12 16,14"/>
+              </svg>
+            </button>
           </div>
           <button 
             className="w-10 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer"
@@ -125,8 +194,56 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
           </button>
         </header>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-4 custom-scrollbar">
+        {/* Chat History Panel */}
+        {showHistory ? (
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-light text-white">Chat History</h3>
+              <button
+                className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                onClick={clearHistory}
+                disabled={chatHistory.length === 0}
+              >
+                Clear All History
+              </button>
+            </div>
+            
+            {isLoadingHistory ? (
+              <div className="flex justify-center py-12">
+                <div className="text-green-200/50">Loading history...</div>
+              </div>
+            ) : chatHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-green-200/40">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12,6 12,12 16,14"/>
+                </svg>
+                <p className="mt-4 text-sm">No chat history yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {chatHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-4 bg-white/5 border border-white/10 rounded-2xl hover:border-accent/30 transition-all cursor-pointer group"
+                    onClick={() => loadHistoryConversation(item)}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[10px] text-accent font-medium">{item.model}</span>
+                      <span className="text-[10px] text-green-200/40">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-white line-clamp-2 mb-1">{item.message}</p>
+                    <p className="text-xs text-green-200/60 line-clamp-1">{item.response}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Messages */
+          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-4 custom-scrollbar">
           {messages.map((msg, idx) => (
             <div
               key={idx}
@@ -158,6 +275,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
             </div>
           )}
         </div>
+        )}
 
         {/* Input */}
         <div className="px-8 py-6 border-t border-white/5">

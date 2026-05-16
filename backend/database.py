@@ -25,11 +25,14 @@ try:
     # Collections
     users_collection = db["users"]
     settings_collection = db["settings"]
+    chat_history_collection = db["chatbot-history"]
     
     # Create indexes for faster lookups
     users_collection.create_index("device_id", unique=True)
     users_collection.create_index("email")
     settings_collection.create_index("user_id", unique=True)
+    chat_history_collection.create_index("user_id")
+    chat_history_collection.create_index("created_at")
     
     print(f"✓ MongoDB Connected Successfully!")
     print(f"✓ Database: {MONGODB_DB_NAME}")
@@ -167,3 +170,97 @@ class SettingsDB:
 # Initialize database instances
 db = UserDB()
 settings_db = SettingsDB()
+
+class ChatHistoryDB:
+    def __init__(self):
+        pass
+
+    def save_message(self, user_id: str, message: str, response: str, model: str, provider_key: str = None) -> dict:
+        """Save a chat message and response"""
+        from bson import ObjectId
+        from datetime import datetime
+        
+        try:
+            chat_doc = {
+                "user_id": ObjectId(user_id),
+                "message": message,
+                "response": response,
+                "model": model,
+                "provider_key": provider_key,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            
+            result = chat_history_collection.insert_one(chat_doc)
+            chat_doc["id"] = str(result.inserted_id)
+            chat_doc.pop("_id", None)
+            chat_doc.pop("user_id", None)
+            
+            print(f"[ChatHistory] Saved message for user {user_id}")
+            return chat_doc
+        except Exception as e:
+            print(f"[ChatHistory] Error saving message: {e}")
+            raise
+
+    def get_user_conversations(self, user_id: str, limit: int = 50) -> list:
+        """Get all conversations for a user, grouped by session"""
+        from bson import ObjectId
+        
+        try:
+            print(f"[ChatHistory] Getting conversations for user {user_id}")
+            
+            # Get all messages for user, sorted by date
+            messages = list(
+                chat_history_collection.find({"user_id": ObjectId(user_id)})
+                .sort("created_at", -1)
+                .limit(limit)
+            )
+            
+            # Convert ObjectId to string and format
+            formatted_messages = []
+            for msg in messages:
+                formatted_messages.append({
+                    "id": str(msg["_id"]),
+                    "message": msg["message"],
+                    "response": msg["response"],
+                    "model": msg.get("model", "unknown"),
+                    "provider_key": msg.get("provider_key"),
+                    "created_at": msg["created_at"].isoformat()
+                })
+            
+            print(f"[ChatHistory] Found {len(formatted_messages)} messages")
+            return formatted_messages
+        except Exception as e:
+            print(f"[ChatHistory] Error getting conversations: {e}")
+            return []
+
+    def delete_conversation(self, user_id: str, message_id: str) -> bool:
+        """Delete a specific message"""
+        from bson import ObjectId
+        
+        try:
+            result = chat_history_collection.delete_one({
+                "_id": ObjectId(message_id),
+                "user_id": ObjectId(user_id)
+            })
+            
+            print(f"[ChatHistory] Deleted message {message_id}")
+            return result.deleted_count > 0
+        except Exception as e:
+            print(f"[ChatHistory] Error deleting message: {e}")
+            return False
+
+    def clear_user_history(self, user_id: str) -> int:
+        """Clear all chat history for a user"""
+        from bson import ObjectId
+        
+        try:
+            result = chat_history_collection.delete_many({"user_id": ObjectId(user_id)})
+            print(f"[ChatHistory] Cleared {result.deleted_count} messages for user {user_id}")
+            return result.deleted_count
+        except Exception as e:
+            print(f"[ChatHistory] Error clearing history: {e}")
+            return 0
+
+
+chat_history_db = ChatHistoryDB()

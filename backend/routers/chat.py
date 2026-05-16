@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from auth import verify_token
-from database import db
+from database import db, chat_history_db
 from routers.device_auth import decrypt_api_key
 import httpx
 from datetime import datetime
@@ -145,6 +145,18 @@ async def send_message(token: str, request: ChatRequest):
             ai_response = data["choices"][0]["message"]["content"]
             
             print(f"Successfully got response from {provider_config['model']}")
+            
+            # Save to chat history
+            try:
+                chat_history_db.save_message(
+                    user_id=user_id,
+                    message=request.message,
+                    response=ai_response,
+                    model=provider_config["model"],
+                    provider_key=provider_key
+                )
+            except Exception as e:
+                print(f"Warning: Failed to save chat history: {e}")
             
             return ChatResponse(
                 response=ai_response,
