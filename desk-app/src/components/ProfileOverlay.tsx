@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { login as loginAction, logout as logoutAction, updateAIProviders } from '../store/authSlice'
 import type { RootState, AppDispatch } from '../store'
@@ -8,21 +8,16 @@ import { useToast } from '../context/ToastContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-// Curated OpenRouter models - top free and premium options
 const OPENROUTER_MODELS = [
-  // Free models (recommended for getting started)
   { id: 'meta-llama/llama-3-8b-instruct:free', name: 'Llama 3 8B (Free)', provider: 'Meta', isFree: true },
   { id: 'google/gemma-7b-it:free', name: 'Gemma 7B (Free)', provider: 'Google', isFree: true },
   { id: 'microsoft/phi-3-medium-128k-instruct:free', name: 'Phi-3 Medium (Free)', provider: 'Microsoft', isFree: true },
-  
-  // Premium models (best quality)
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', isFree: false },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', isFree: false },
   { id: 'google/gemini-flash-1.5', name: 'Gemini Flash 1.5', provider: 'Google', isFree: false },
   { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'Meta', isFree: false },
 ]
 
-// Option to add custom model
 const CUSTOM_MODEL_OPTION = { id: 'custom', name: 'Custom Model (Advanced)', provider: 'Custom', isFree: false }
 
 function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -38,7 +33,6 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const [showCustomModelInput, setShowCustomModelInput] = useState(false)
   const [customModelId, setCustomModelId] = useState('')
   
-  // Dialog states
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [providerToDelete, setProviderToDelete] = useState<string>('')
@@ -49,6 +43,13 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       setProfileEmail(user.email || '')
     }
   }, [user])
+
+  const hasChanges = useMemo(() => {
+    if (!user) return false
+    return profileName !== (user.name || '') || profileEmail !== (user.email || '')
+  }, [user, profileName, profileEmail])
+
+  const hasProviders = user?.ai_providers && Object.keys(user.ai_providers).length > 0
 
   const saveProfile = useCallback(async () => {
     if (!token) return
@@ -81,18 +82,14 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     
     setIsSavingProfile(true)
     try {
-      // Create entries for multiple models with the same API key
-      // Using most reliable and widely available models on OpenRouter
       const selectedModels = showCustomModelInput && customModelId 
-        ? [customModelId]  // Use custom model if provided
+        ? [customModelId]
         : [
-            'openai/gpt-4o-mini',  // Most reliable, low cost
-            'anthropic/claude-3-haiku',  // Fast and affordable
-            // 'google/gemini-flash-1.5',  // Good balance
-            'meta-llama/llama-3.1-70b-instruct'  // Powerful open source
+            'openai/gpt-4o-mini',
+            'anthropic/claude-3-haiku',
+            'meta-llama/llama-3.1-70b-instruct'
           ]
       
-      // Create provider entries for each model
       const aiProviders: any = {}
       selectedModels.forEach((model, index) => {
         const key = showCustomModelInput && customModelId ? 'custom' : `model_${index + 1}`
@@ -181,17 +178,17 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 opacity-100 animate-in fade-in zoom-in-95">
-      <div className="w-full max-w-[900px] border border-white/10 rounded-[32px] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+    <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4">
+      <div className="w-full max-w-[900px] border border-white/10 rounded-[32px] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden bg-glass glass-blur">
         
         {/* Header */}
         <header className="px-10 pt-8 pb-6 flex justify-between items-center border-b border-white/5">
           <div className="flex flex-col items-start">
             <h2 className="text-3xl font-extralight text-white tracking-tight">Profile Settings</h2>
-            <p className="text-sm text-green-200/50 mt-1 font-light">Edit your account </p>
+            <p className="text-sm text-green-200/50 mt-1 font-light">Edit your account</p>
           </div>
           <button 
-            className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white flex items-center justify-center transition-all duration-300 cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white flex items-center justify-center cursor-pointer"
             onClick={onClose}
           >
             ✕
@@ -206,9 +203,9 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               <div className="p-6 bg-white/[0.02] border border-white/5 rounded-[20px] h-full">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">AI Providers</h3>
-                  {!showAIAddForm && (
+                  {!hasProviders && !showAIAddForm && (
                     <button 
-                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-accent text-accent hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer"
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full border border-accent text-accent hover:bg-accent hover:text-primary cursor-pointer"
                       onClick={() => setShowAIAddForm(true)}
                     >
                       + Add Provider
@@ -217,33 +214,33 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 </div>
 
                 {showAIAddForm && (
-                  <div className="p-5 bg-white/5 border border-white/10 rounded-2xl mb-6 animate-in slide-in-from-top-4 duration-300">
+                  <div className="p-5 bg-white/5 border border-white/10 rounded-2xl mb-6">
                     <div className="mb-4 p-3 bg-accent/10 border border-accent/20 rounded-xl">
                       <p className="text-xs text-green-200/70">🔑 Paste your OpenRouter API key below. This will automatically add 4 models (including free options) that you can switch between while chatting!</p>
-                      <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline mt-1 inline-block">Get your free API key →</a>
+                      <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" className="text-xs text-accent underline mt-1 inline-block">Get your free API key →</a>
                     </div>
                     
                     <div className="flex flex-col gap-2 mb-6">
                       <label className="text-[10px] uppercase tracking-wider text-green-200/50">OpenRouter API Key</label>
                       <input 
                         type="password"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-accent transition-all"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-accent"
                         value={aiProviderInput.api_key}
                         onChange={(e) => setAiProviderInput({ ...aiProviderInput, api_key: e.target.value })}
                         placeholder="sk-or-v1-..."
                       />
-                      <p className="text-[10px] text-green-200/40">Models to be added: GPT-4o Mini, Claude 3 Haiku, Gemini Flash 1.5, Llama 3.1 70B</p>
+                      <p className="text-[10px] text-green-200/40">Models to be added: GPT-4o Mini, Claude 3 Haiku, Llama 3.1 70B</p>
                     </div>
                     <div className="flex gap-3">
                       <button 
-                        className="flex-1 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-accent hover:text-primary transition-all duration-300 disabled:opacity-50 cursor-pointer"
+                        className="flex-1 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-accent hover:text-primary cursor-pointer disabled:opacity-50"
                         onClick={saveAIProvider}
                         disabled={isSavingProfile || !aiProviderInput.api_key}
                       >
                         {isSavingProfile ? 'Saving...' : 'Connect All Models'}
                       </button>
                       <button 
-                        className="w-10 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer"
+                        className="w-10 h-10 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary cursor-pointer"
                         onClick={() => {
                           setShowAIAddForm(false)
                           setShowCustomModelInput(false)
@@ -258,17 +255,16 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 )}
 
                 <div className="flex flex-col gap-3">
-                  {user?.ai_providers && Object.keys(user.ai_providers).length > 0 ? (
-                    Object.entries(user.ai_providers).map(([key, provider]) => (
-                      <div key={key} className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl flex justify-between items-center group hover:border-accent/30 transition-all duration-300">
+                  {hasProviders ? (
+                    Object.entries(user.ai_providers as Record<string, any>).map(([key, provider]) => (
+                      <div key={key} className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl flex justify-between items-center hover:border-accent/30">
                         <div className="flex flex-col items-start">
                           <span className="text-sm font-medium text-white">OpenRouter</span>
                           <span className="text-[10px] font-mono text-green-200/40 mt-0.5">{provider.model}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-bold text-accent uppercase tracking-wider">✓ Connected</span>
                           <button 
-                            className="w-8 h-8 rounded-full bg-glass glass-blur border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 flex items-center justify-center transition-all duration-300 cursor-pointer opacity-60 group-hover:opacity-100"
+                            className="w-8 h-8 rounded-full bg-glass glass-blur border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 flex items-center justify-center cursor-pointer"
                             onClick={() => deleteAIProvider(key)}
                             title="Remove provider"
                           >
@@ -289,10 +285,8 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               </div>
             </div>
 
-            {/* Right Column: Info & Status */}
+            {/* Right Column: Personal Details */}
             <div className="flex-1 flex flex-col gap-6">
-              
-
               <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[20px] flex-1">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-6">Personal Details</h3>
                 <div className="flex flex-col gap-5">
@@ -300,7 +294,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     <label className="text-[10px] uppercase tracking-wider text-green-200/50">Name (Optional)</label>
                     <input 
                       type="text" 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-lg font-light focus:outline-none focus:border-accent transition-all placeholder:text-white/10"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-lg font-light focus:outline-none focus:border-accent placeholder:text-white/10"
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
                       placeholder="name"
@@ -310,43 +304,36 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     <label className="text-[10px] uppercase tracking-wider text-green-200/50">Email (Optional)</label>
                     <input 
                       type="email" 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-lg font-light focus:outline-none focus:border-accent transition-all placeholder:text-white/10"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-lg font-light focus:outline-none focus:border-accent placeholder:text-white/10"
                       value={profileEmail}
                       onChange={(e) => setProfileEmail(e.target.value)}
                       placeholder="email@example.com"
                     />
                   </div>
                 </div>
-
-                <div className="flex gap-3 mt-10">
-                  <button 
-                    className="flex-1 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-accent hover:text-primary transition-all duration-300 shadow-lg active:scale-[0.98] cursor-pointer"
-                    onClick={saveProfile} 
-                    disabled={isSavingProfile}
-                  >
-                    {isSavingProfile ? 'Saving...' : 'Save Profile'}
-                  </button>
-                  <button 
-                    className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 active:scale-[0.98] cursor-pointer"
-                    onClick={onClose}
-                  >
-                    ✕
-                  </button>
-                </div>
               </div>
-
-              <button 
-                className="w-auto h-14 rounded-full bg-glass glass-blur border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 font-medium transition-all duration-300 cursor-pointer active:scale-[0.98]"
-                onClick={handleLogout}
-              >
-                Logout Session
-              </button>
             </div>
           </div>
         </main>
+
+        {/* Footer Actions */}
+        <footer className="px-10 py-6 border-t border-white/5 flex items-center justify-between">
+          <button 
+            className="h-14 rounded-full bg-glass glass-blur border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 font-medium px-8 cursor-pointer"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+          <button 
+            className="h-14 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-accent hover:text-primary px-8 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={saveProfile} 
+            disabled={isSavingProfile || !hasChanges}
+          >
+            {isSavingProfile ? 'Saving...' : 'Save Profile'}
+          </button>
+        </footer>
       </div>
 
-      {/* Logout Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showLogoutDialog}
         title="Logout Session"
@@ -358,7 +345,6 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         onCancel={() => setShowLogoutDialog(false)}
       />
 
-      {/* Delete Provider Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showDeleteDialog}
         title="Remove AI Provider"
@@ -377,4 +363,3 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 }
 
 export default ProfileOverlay
-

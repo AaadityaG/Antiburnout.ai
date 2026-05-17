@@ -54,8 +54,8 @@ function SettingsOverlay({ isOpen, onClose, initialInterval, initialDuration, on
         </div>
 
         <div className="flex gap-3 mt-10">
-          <button className="flex-1 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer" onClick={handleApply}>Apply</button>
-          <button className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-all duration-300 cursor-pointer" onClick={onClose}>✕</button>
+          <button className="flex-1 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium hover:bg-accent hover:text-primary cursor-pointer" onClick={handleApply}>Apply</button>
+          <button className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary cursor-pointer" onClick={onClose}>✕</button>
         </div>
       </div>
     </div>
