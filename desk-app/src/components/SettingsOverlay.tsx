@@ -28,7 +28,7 @@ function SettingsOverlay({ isOpen, onClose, initialInterval, initialDuration, on
 
   return (
     <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 opacity-100 animate-in fade-in zoom-in-95">
-      <div className="w-full max-w-[500px] bg-glass-heavy border border-white/10 rounded-[32px] p-10 shadow-2xl">
+      <div className="w-full max-w-[500px]  border border-white/10 rounded-[32px] p-10 shadow-2xl">
         <h2 className="text-4xl font-extralight text-white text-center mb-10">Settings</h2>
         
         <div className="flex flex-col gap-6">
