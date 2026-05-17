@@ -178,7 +178,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 opacity-100 animate-in fade-in zoom-in-95">
       <div className="w-full max-w-[900px] border border-white/10 rounded-[32px] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
         
         {/* Header */}
