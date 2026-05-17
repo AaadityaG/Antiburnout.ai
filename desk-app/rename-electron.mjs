@@ -1,4 +1,4 @@
-import { rename, watch } from 'fs/promises'
+import { rename, watch, mkdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -28,7 +28,8 @@ const isWatchMode = process.argv.includes('--watch')
 
 if (isWatchMode) {
   console.log('Starting Electron file watcher...')
-  renameFiles()
+  await mkdir(electronDist, { recursive: true })
+  await renameFiles()
   
   // Watch the electron-dist directory for changes
   const watcher = watch(electronDist, { recursive: false })
@@ -41,5 +42,5 @@ if (isWatchMode) {
     }
   }
 } else {
-  renameFiles()
+  await renameFiles()
 }
