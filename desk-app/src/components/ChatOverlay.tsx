@@ -220,8 +220,8 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4">
-        <div className="w-full max-w-[1100px] h-[90vh] max-h-[800px] border border-white/10 rounded-[32px] shadow-2xl flex overflow-hidden bg-glass glass-blur">
+      <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 opacity-100 animate-in fade-in zoom-in-95">
+        <div className="w-full max-w-[1100px] h-[90vh] max-h-[800px] border border-white/10 rounded-[32px] shadow-2xl flex overflow-hidden">
           {/* Sidebar - History */}
           <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-[width] duration-200 border-r border-white/5 flex flex-col overflow-hidden shrink-0`}>
             <div className="flex items-center justify-between px-5 py-5 border-b border-white/5">
