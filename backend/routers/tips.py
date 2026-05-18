@@ -21,111 +21,111 @@ class TipResponse(BaseModel):
     duration: str  # suggested duration for the activity
     instruction: str  # detailed step-by-step instruction
 
-# Fallback tips in case AI is not available
-FALLBACK_TIPS = [
-    {
-        "tip": "20-20-20 Rule",
-        "category": "eyes",
-        "duration": "20 seconds",
-        "instruction": "Look at something 20 feet away for 20 seconds. This reduces eye strain by giving your focusing muscles a break."
-    },
-    {
-        "tip": "Palming Exercise",
-        "category": "eyes",
-        "duration": "30 seconds",
-        "instruction": "Rub your hands together to warm them, then gently cup your palms over closed eyes without pressing. Breathe deeply and relax."
-    },
-    {
-        "tip": "Eye Rolling",
-        "category": "eyes",
-        "duration": "15 seconds",
-        "instruction": "Slowly roll your eyes in a circle 5 times clockwise, then 5 times counter-clockwise. This relieves eye muscle tension."
-    },
-    {
-        "tip": "Blinking Exercise",
-        "category": "eyes",
-        "duration": "20 seconds",
-        "instruction": "Blink rapidly 10 times, then close your eyes for 20 seconds. This rehydrates your eyes and reduces dryness."
-    },
-    {
-        "tip": "Neck Stretch",
-        "category": "posture",
-        "duration": "30 seconds",
-        "instruction": "Tilt your head to the right, bringing ear toward shoulder. Hold for 15 seconds, then switch to left side. Repeat 2 times."
-    },
-    {
-        "tip": "Shoulder Rolls",
-        "category": "posture",
-        "duration": "20 seconds",
-        "instruction": "Roll your shoulders forward 5 times, then backward 5 times. This releases tension from sitting at your desk."
-    },
-    {
-        "tip": "Deep Breathing (4-7-8)",
-        "category": "stress",
-        "duration": "60 seconds",
-        "instruction": "Inhale through nose for 4 counts, hold for 7 counts, exhale through mouth for 8 counts. Repeat 3 times to calm your nervous system."
-    },
-    {
-        "tip": "Box Breathing",
-        "category": "mindfulness",
-        "duration": "60 seconds",
-        "instruction": "Inhale for 4 counts, hold for 4, exhale for 4, hold for 4. Repeat 4 times. This technique is used by Navy SEALs for stress management."
-    },
-    {
-        "tip": "Hydration Break",
-        "category": "hydration",
-        "duration": "30 seconds",
-        "instruction": "Drink a full glass of water. Dehydration causes fatigue, headaches, and reduced concentration. Keep water at your desk!"
-    },
-    {
-        "tip": "Wrist and Finger Stretch",
-        "category": "posture",
-        "duration": "30 seconds",
-        "instruction": "Extend one arm, pull fingers back gently with other hand. Hold 15 seconds. Switch hands. Then shake out both wrists."
-    },
-    {
-        "tip": "Stand and Stretch",
-        "category": "movement",
-        "duration": "45 seconds",
-        "instruction": "Stand up, reach your arms overhead, stretch to the left for 10 seconds, then to the right. Feel the stretch along your sides."
-    },
-    {
-        "tip": "Progressive Muscle Relaxation",
-        "category": "stress",
-        "duration": "60 seconds",
-        "instruction": "Tense your shoulders tightly for 5 seconds, then release. Notice the difference. Move to your arms, then face, repeating the pattern."
-    },
-    {
-        "tip": "Focus Shift Exercise",
-        "category": "eyes",
-        "duration": "30 seconds",
-        "instruction": "Hold your thumb 10 inches from your face. Focus on it for 10 seconds, then focus on something across the room for 10 seconds. Repeat 3 times."
-    },
-    {
-        "tip": "Mindful Observation",
-        "category": "mindfulness",
-        "duration": "60 seconds",
-        "instruction": "Look out a window or around the room. Find 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, 1 you can taste."
-    },
-    {
-        "tip": "Seated Spinal Twist",
-        "category": "posture",
-        "duration": "40 seconds",
-        "instruction": "Sit tall, place right hand on left knee, left hand behind you. Gently twist left, hold 20 seconds. Switch sides."
-    },
-    {
-        "tip": "Quick Walk",
-        "category": "movement",
-        "duration": "60 seconds",
-        "instruction": "Walk around your workspace or do a quick lap. Movement increases blood flow and refreshes your mind better than staying seated."
-    },
-    {
-        "tip": "Gratitude Moment",
-        "category": "mindfulness",
-        "duration": "30 seconds",
-        "instruction": "Think of 3 things you're grateful for right now. This simple practice reduces stress and improves overall wellbeing."
-    }
-]
+# Fallback tips in case AI is not available (COMMENTED OUT - NOT USED)
+# FALLBACK_TIPS = [
+#     {
+#         "tip": "20-20-20 Rule",
+#         "category": "eyes",
+#         "duration": "20 seconds",
+#         "instruction": "Look at something 20 feet away for 20 seconds. This reduces eye strain by giving your focusing muscles a break."
+#     },
+#     {
+#         "tip": "Palming Exercise",
+#         "category": "eyes",
+#         "duration": "30 seconds",
+#         "instruction": "Rub your hands together to warm them, then gently cup your palms over closed eyes without pressing. Breathe deeply and relax."
+#     },
+#     {
+#         "tip": "Eye Rolling",
+#         "category": "eyes",
+#         "duration": "15 seconds",
+#         "instruction": "Slowly roll your eyes in a circle 5 times clockwise, then 5 times counter-clockwise. This relieves eye muscle tension."
+#     },
+#     {
+#         "tip": "Blinking Exercise",
+#         "category": "eyes",
+#         "duration": "20 seconds",
+#         "instruction": "Blink rapidly 10 times, then close your eyes for 20 seconds. This rehydrates your eyes and reduces dryness."
+#     },
+#     {
+#         "tip": "Neck Stretch",
+#         "category": "posture",
+#         "duration": "30 seconds",
+#         "instruction": "Tilt your head to the right, bringing ear toward shoulder. Hold for 15 seconds, then switch to left side. Repeat 2 times."
+#     },
+#     {
+#         "tip": "Shoulder Rolls",
+#         "category": "posture",
+#         "duration": "20 seconds",
+#         "instruction": "Roll your shoulders forward 5 times, then backward 5 times. This releases tension from sitting at your desk."
+#     },
+#     {
+#         "tip": "Deep Breathing (4-7-8)",
+#         "category": "stress",
+#         "duration": "60 seconds",
+#         "instruction": "Inhale through nose for 4 counts, hold for 7 counts, exhale through mouth for 8 counts. Repeat 3 times to calm your nervous system."
+#     },
+#     {
+#         "tip": "Box Breathing",
+#         "category": "mindfulness",
+#         "duration": "60 seconds",
+#         "instruction": "Inhale for 4 counts, hold for 4, exhale for 4, hold for 4. Repeat 4 times. This technique is used by Navy SEALs for stress management."
+#     },
+#     {
+#         "tip": "Hydration Break",
+#         "category": "hydration",
+#         "duration": "30 seconds",
+#         "instruction": "Drink a full glass of water. Dehydration causes fatigue, headaches, and reduced concentration. Keep water at your desk!"
+#     },
+#     {
+#         "tip": "Wrist and Finger Stretch",
+#         "category": "posture",
+#         "duration": "30 seconds",
+#         "instruction": "Extend one arm, pull fingers back gently with other hand. Hold 15 seconds. Switch hands. Then shake out both wrists."
+#     },
+#     {
+#         "tip": "Stand and Stretch",
+#         "category": "movement",
+#         "duration": "45 seconds",
+#         "instruction": "Stand up, reach your arms overhead, stretch to the left for 10 seconds, then to the right. Feel the stretch along your sides."
+#     },
+#     {
+#         "tip": "Progressive Muscle Relaxation",
+#         "category": "stress",
+#         "duration": "60 seconds",
+#         "instruction": "Tense your shoulders tightly for 5 seconds, then release. Notice the difference. Move to your arms, then face, repeating the pattern."
+#     },
+#     {
+#         "tip": "Focus Shift Exercise",
+#         "category": "eyes",
+#         "duration": "30 seconds",
+#         "instruction": "Hold your thumb 10 inches from your face. Focus on it for 10 seconds, then focus on something across the room for 10 seconds. Repeat 3 times."
+#     },
+#     {
+#         "tip": "Mindful Observation",
+#         "category": "mindfulness",
+#         "duration": "60 seconds",
+#         "instruction": "Look out a window or around the room. Find 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, 1 you can taste."
+#     },
+#     {
+#         "tip": "Seated Spinal Twist",
+#         "category": "posture",
+#         "duration": "40 seconds",
+#         "instruction": "Sit tall, place right hand on left knee, left hand behind you. Gently twist left, hold 20 seconds. Switch sides."
+#     },
+#     {
+#         "tip": "Quick Walk",
+#         "category": "movement",
+#         "duration": "60 seconds",
+#         "instruction": "Walk around your workspace or do a quick lap. Movement increases blood flow and refreshes your mind better than staying seated."
+#     },
+#     {
+#         "tip": "Gratitude Moment",
+#         "category": "mindfulness",
+#         "duration": "30 seconds",
+#         "instruction": "Think of 3 things you're grateful for right now. This simple practice reduces stress and improves overall wellbeing."
+#     }
+# ]
 
 def build_tip_system_prompt(request: TipRequest, user: dict) -> str:
     """Build system prompt for generating personalized break tips"""
@@ -198,10 +198,9 @@ async def get_tip_recommendation(token: str, request: TipRequest = TipRequest())
         # Try to get AI provider
         ai_providers = user.get("ai_providers", {})
         
-        # If no AI provider, return fallback tip
+        # If no AI provider, return error (no fallback)
         if not ai_providers:
-            tip = random.choice(FALLBACK_TIPS)
-            return TipResponse(**tip)
+            raise HTTPException(status_code=400, detail="No AI provider configured. Please add an AI provider in your profile settings.")
         
         # Use first available provider
         provider_key = list(ai_providers.keys())[0]
@@ -236,16 +235,12 @@ async def get_tip_recommendation(token: str, request: TipRequest = TipRequest())
             )
             
             if response.status_code != 200:
-                # Fallback to local tips if AI fails
-                print(f"Tip API: AI provider failed, using fallback. Status: {response.status_code}")
-                tip = random.choice(FALLBACK_TIPS)
-                return TipResponse(**tip)
+                raise HTTPException(status_code=502, detail=f"AI provider failed with status: {response.status_code}")
             
             data = response.json()
             
             if not data.get("choices") or len(data["choices"]) == 0:
-                tip = random.choice(FALLBACK_TIPS)
-                return TipResponse(**tip)
+                raise HTTPException(status_code=502, detail="AI provider returned empty response")
             
             ai_response = data["choices"][0]["message"]["content"]
             
@@ -268,20 +263,15 @@ async def get_tip_recommendation(token: str, request: TipRequest = TipRequest())
                     instruction=tip_data["instruction"]
                 )
             except (json.JSONDecodeError, KeyError) as e:
-                print(f"Tip API: Failed to parse AI response, using fallback. Error: {e}")
-                tip = random.choice(FALLBACK_TIPS)
-                return TipResponse(**tip)
+                raise HTTPException(status_code=502, detail=f"Failed to parse AI response: {str(e)}")
             
     except HTTPException:
         raise
     except Exception as e:
-        # Always fallback to local tips on error
-        print(f"Tip API: Error occurred, using fallback. Error: {str(e)}")
-        tip = random.choice(FALLBACK_TIPS)
-        return TipResponse(**tip)
+        raise HTTPException(status_code=500, detail=f"Failed to generate tip: {str(e)}")
 
-@router.get("/fallback", response_model=TipResponse)
-async def get_fallback_tip():
-    """Get a fallback tip without authentication (for testing)"""
-    tip = random.choice(FALLBACK_TIPS)
-    return TipResponse(**tip)
+# @router.get("/fallback", response_model=TipResponse)
+# async def get_fallback_tip():
+#     """Get a fallback tip without authentication (for testing)"""
+#     tip = random.choice(FALLBACK_TIPS)
+#     return TipResponse(**tip)

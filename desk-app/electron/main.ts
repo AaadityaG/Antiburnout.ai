@@ -9,9 +9,9 @@ import crypto from 'crypto'
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let breakTimer: NodeJS.Timeout | null = null
-let timeRemaining = 30 * 60 * 1000
-let initialTime = 30 * 60 * 1000
-let breakDuration = 20
+let timeRemaining = 1800 * 1000  // 30 minutes in milliseconds
+let initialTime = 1800 * 1000    // 30 minutes in milliseconds
+let breakDuration = 90           // 90 seconds (1 minute 30 seconds)
 let autoStart = true  // Start timer by default
 let isPaused = false
 let isMinimized = false
@@ -27,7 +27,7 @@ function loadConfig() {
     if (fs.existsSync(CONFIG_FILE)) {
       const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
       if (config.breakInterval) {
-        initialTime = config.breakInterval * 60 * 1000
+        initialTime = config.breakInterval * 1000  // Convert seconds to milliseconds
         timeRemaining = initialTime
       }
       if (config.breakDuration) breakDuration = config.breakDuration
@@ -41,7 +41,7 @@ function loadConfig() {
 function saveConfig() {
   try {
     const config = {
-      breakInterval: initialTime / 60000,
+      breakInterval: initialTime / 1000,  // Convert milliseconds to seconds
       breakDuration: breakDuration,
       autoStart: autoStart,
     }
@@ -99,8 +99,13 @@ autoLauncher.enable().catch((err: unknown) => {
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
+  
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 }
 
@@ -137,7 +142,7 @@ function createWindow() {
     mainWindow?.show()
     
     mainWindow?.webContents.send('settings-updated', {
-      interval: initialTime / 60000,
+      interval: initialTime / 1000,  // Convert ms to seconds
       duration: breakDuration
     })
   })
@@ -312,7 +317,7 @@ ipcMain.on('timer-break-complete', () => {
 
 ipcMain.on('update-timer-setting', (event, { interval, duration, autoStart: newAutoStart }) => {
   console.log('Updating settings:', { interval, duration, autoStart: newAutoStart })
-  initialTime = interval * 60 * 1000
+  initialTime = interval * 1000  // Convert seconds to milliseconds
   timeRemaining = initialTime
   breakDuration = duration
   if (newAutoStart !== undefined) autoStart = newAutoStart

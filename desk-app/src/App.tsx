@@ -16,10 +16,10 @@ function App() {
   const { isAuthenticated, token } = useSelector((state: RootState) => state.auth)
   const settings = useSelector((state: RootState) => state.settings)
 
-  const [timeRemaining, setTimeRemaining] = useState(settings.breakInterval * 60 * 1000)
+  const [timeRemaining, setTimeRemaining] = useState(1800 * 1000) // Will be updated when settings load
   const [isPaused, setIsPaused] = useState(false)
   const [isBreakActive, setIsBreakActive] = useState(false)
-  const [breakTimeLeft, setBreakTimeLeft] = useState(settings.breakDuration)
+  const [breakTimeLeft, setBreakTimeLeft] = useState(90) // Will be updated when settings load
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
@@ -40,8 +40,8 @@ function App() {
       // User logged out - reset all states
       dispatch(clearSettings())
       dispatch(clearTip())
-      setTimeRemaining(30 * 60 * 1000)  // Reset to default
-      setBreakTimeLeft(20)  // Reset to default
+      setTimeRemaining(1800 * 1000)  // Reset to default (30 minutes)
+      setBreakTimeLeft(90)  // Reset to default (1 minute 30 seconds)
       setIsPaused(false)
       setIsBreakActive(false)
       hasInitializedTimer.current = false  // Allow re-initialization on next login
@@ -53,19 +53,14 @@ function App() {
     }
   }, [isAuthenticated, dispatch])
 
-  // Sync timer ONLY when settings are loaded from backend
+  // Sync timer ONLY after settings are actually fetched from backend
   const hasInitializedTimer = useRef(false)
-  const prevIsLoading = useRef<boolean | null>(null)
   
   useEffect(() => {
-    // Detect when loading finishes (transitions from true to false)
-    const loadingJustFinished = prevIsLoading.current === true && !settings.isLoading
-    prevIsLoading.current = settings.isLoading
-    
-    // Only initialize timer when settings fetch completes
-    if (isAuthenticated && token && !hasInitializedTimer.current && loadingJustFinished && settings.breakInterval > 0) {
-      console.log('Starting timer with backend settings:', settings.breakInterval, 'minutes')
-      setTimeRemaining(settings.breakInterval * 60 * 1000)
+    // Only initialize timer after settings fetch completes
+    if (isAuthenticated && token && !hasInitializedTimer.current && settings.fetched && settings.breakInterval > 0) {
+      console.log('Applying backend settings to timer:', settings.breakInterval, 'seconds')
+      setTimeRemaining(settings.breakInterval * 1000) // Convert seconds to ms
       setBreakTimeLeft(settings.breakDuration)
       hasInitializedTimer.current = true
       
@@ -76,31 +71,43 @@ function App() {
         autoStart: settings.autoStart
       })
     }
-  }, [isAuthenticated, token, settings.breakInterval, settings.breakDuration, settings.autoStart, settings.isLoading])
+  }, [isAuthenticated, token, settings.breakInterval, settings.breakDuration, settings.autoStart, settings.fetched])
 
   const handleApplySettings = useCallback((interval: number, duration: number) => {
-    dispatch(updateSettings({
-      token: token || '', 
-      settings: { 
-        break_interval: interval,
-        break_duration: duration,
-        auto_start: true
-      }
-    }))
-    // Also notify Electron if needed
+    console.log('App.tsx - handleApplySettings called with:', { interval, duration })
+    
+    // Immediately notify Electron with new settings
     window.electronAPI?.sendUpdateTimerSetting({
-      interval,
-      duration,
+      interval,   // seconds
+      duration,   // seconds
       autoStart: true
     })
+    
+    // Also update backend if authenticated
+    if (token) {
+      console.log('App.tsx - Dispatching updateSettings to backend')
+      dispatch(updateSettings({
+        token: token, 
+        settings: { 
+          break_interval: interval,   // Already in seconds
+          break_duration: duration,   // Already in seconds
+          auto_start: true
+        }
+      }))
+    }
   }, [token, dispatch])
 
-  // Format time as MM:SS
+  // Format time as HH:MM:SS or MM:SS
   const formatTime = (ms: number): string => {
     const totalSeconds = Math.max(0, Math.floor(ms / 1000))
-    const mins = Math.floor(totalSeconds / 60)
-    const secs = totalSeconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    const h = Math.floor(totalSeconds / 3600)
+    const m = Math.floor((totalSeconds % 3600) / 60)
+    const s = totalSeconds % 60
+    
+    if (h > 0) {
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    }
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
   // Timer logic and IPC listeners
@@ -109,7 +116,7 @@ function App() {
 
     const cleanupTimerUpdate = window.electronAPI.onTimerUpdate((time) => setTimeRemaining(time))
     const cleanupTimerReset = window.electronAPI.onTimerReset(() => {
-      setTimeRemaining(settings.breakInterval * 60 * 1000)
+      setTimeRemaining(settings.breakInterval * 1000) // Convert seconds to ms
       setIsPaused(false)
     })
     const cleanupBreakTime = window.electronAPI.onBreakTime((data) => {
@@ -117,7 +124,7 @@ function App() {
       setIsBreakActive(true)
     })
     const cleanupSettingsUpdated = window.electronAPI.onSettingsUpdated((data) => {
-      setTimeRemaining(data.interval * 60 * 1000)
+      setTimeRemaining(data.interval * 1000)  // Convert seconds to ms
     })
 
     return () => {
@@ -162,7 +169,7 @@ function App() {
     }
     
     // Clear tip when break ends
-    if (!isBreakActive && timeRemaining === settings.breakInterval * 60 * 1000) {
+    if (!isBreakActive && timeRemaining === settings.breakInterval * 1000) {
       dispatch(clearTip())
     }
   }, [isBreakActive, timeRemaining, token, dispatch, settings.breakInterval])
@@ -185,7 +192,7 @@ function App() {
     window.electronAPI?.sendMinimizeToTray()
   }, [])
 
-  const progress = ((settings.breakInterval * 60 * 1000 - timeRemaining) / (settings.breakInterval * 60 * 1000)) * 100
+  const progress = ((settings.breakInterval * 1000 - timeRemaining) / (settings.breakInterval * 1000)) * 100
   const circumference = 2 * Math.PI * 270
 
   return (

@@ -6,8 +6,8 @@ from database import db, settings_db
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
 class UserSettings(BaseModel):
-    break_interval: int = 30  # minutes
-    break_duration: int = 20  # seconds
+    break_interval: int = 1800  # seconds (30 minutes)
+    break_duration: int = 90    # seconds (1 minute 30 seconds)
     auto_start: bool = True
 
 @router.get("/user", response_model=UserSettings)
@@ -19,18 +19,21 @@ async def get_user_settings(token: str):
             raise HTTPException(status_code=401, detail="Invalid token")
         
         user_id = payload.get("sub")
+        print(f"[Settings API] Fetching settings for user_id: {user_id}")
         
         # Get user's settings from MongoDB or return defaults
         user_settings = settings_db.get_user_settings(user_id)
         
         if not user_settings:
-            # Return default settings
+            print(f"[Settings API] No settings found, returning defaults")
+            # Return default settings (30 minutes interval, 90 seconds break)
             return UserSettings(
-                break_interval=30,
-                break_duration=20,
+                break_interval=1800,
+                break_duration=90,
                 auto_start=True
             )
         
+        print(f"[Settings API] Returning settings: {user_settings}")
         return UserSettings(**user_settings)
     except HTTPException:
         raise
@@ -46,6 +49,8 @@ async def update_user_settings(settings: UserSettings, token: str):
             raise HTTPException(status_code=401, detail="Invalid token")
         
         user_id = payload.get("sub")
+        print(f"[Settings API] Updating settings for user_id: {user_id}")
+        print(f"[Settings API] New settings - interval: {settings.break_interval}, duration: {settings.break_duration}")
         
         # Save settings to MongoDB
         settings_data = {
@@ -55,6 +60,7 @@ async def update_user_settings(settings: UserSettings, token: str):
         }
         
         settings_db.save_user_settings(user_id, settings_data)
+        print(f"[Settings API] Settings saved successfully")
         
         return settings
     except HTTPException:
