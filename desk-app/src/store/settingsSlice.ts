@@ -7,6 +7,7 @@ interface SettingsState {
   breakInterval: number  // in seconds
   breakDuration: number  // in seconds
   autoStart: boolean
+  enableSound: boolean   // Enable countdown sound
   isLoading: boolean
   error: string | null
   fetched: boolean  // Track if settings have been fetched from backend
@@ -16,6 +17,7 @@ const initialState: SettingsState = {
   breakInterval: 1800,  // 30 minutes in seconds
   breakDuration: 90,    // 1 minute 30 seconds in seconds
   autoStart: true,
+  enableSound: true,    // Sound enabled by default
   isLoading: false,
   error: null,
   fetched: false  // Not fetched yet
@@ -36,7 +38,7 @@ export const fetchSettings = createAsyncThunk(
 
 export const updateSettings = createAsyncThunk(
   'settings/updateSettings',
-  async ({ token, settings }: { token: string; settings: { break_interval: number; break_duration: number; auto_start: boolean } }) => {
+  async ({ token, settings }: { token: string; settings: { break_interval: number; break_duration: number; auto_start: boolean; enable_sound: boolean } }) => {
     console.log('[Redux] Updating settings:', settings)
     const response = await axios.put(`${API_URL}/settings/user`, settings, {
       params: { token }
@@ -67,6 +69,7 @@ export const settingsSlice = createSlice({
       state.breakInterval = 1800  // 30 minutes
       state.breakDuration = 90    // 1 minute 30 seconds
       state.autoStart = true
+      state.enableSound = true
       state.isLoading = false
       state.error = null
       state.fetched = false  // Reset fetch flag
@@ -84,11 +87,13 @@ export const settingsSlice = createSlice({
         state.breakInterval = action.payload.break_interval
         state.breakDuration = action.payload.break_duration
         state.autoStart = action.payload.auto_start
+        state.enableSound = action.payload.enable_sound
         state.fetched = true  // Mark that settings have been fetched from backend
         console.log('[Redux] State updated with settings:', {
           breakInterval: state.breakInterval,
           breakDuration: state.breakDuration,
-          autoStart: state.autoStart
+          autoStart: state.autoStart,
+          enableSound: state.enableSound
         })
       })
       .addCase(fetchSettings.rejected, (state, action) => {
@@ -105,6 +110,7 @@ export const settingsSlice = createSlice({
         state.breakInterval = action.payload.break_interval
         state.breakDuration = action.payload.break_duration
         state.autoStart = action.payload.auto_start
+        state.enableSound = action.payload.enable_sound
       })
       .addCase(updateSettings.rejected, (state, action) => {
         state.isLoading = false

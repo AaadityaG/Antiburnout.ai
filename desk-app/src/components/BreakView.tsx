@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSelector } from 'react-redux'
 import type { RootState } from '../store'
 
@@ -6,29 +6,70 @@ interface BreakViewProps {
   isActive: boolean
   timeLeft: number
   onEnd: () => void
+  enableSound: boolean
 }
 
-function BreakView({ isActive, timeLeft, onEnd }: BreakViewProps) {
+function BreakView({ isActive, timeLeft, onEnd, enableSound }: BreakViewProps) {
   const { currentTip, isLoading } = useSelector((state: RootState) => state.tips)
   const [isPaused, setIsPaused] = useState(false)
   const [countdown, setCountdown] = useState(timeLeft)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const hasPlayedSound = useRef(false)
+  const hasEnded = useRef(false)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const lastClickTime = useRef(0)
 
   useEffect(() => {
     setCountdown(timeLeft)
     setIsPaused(false)
+    hasPlayedSound.current = false
+    hasEnded.current = false
+    // Initialize audio
+    audioRef.current = new Audio('/tone/1sec-tone.wav')
   }, [isActive, timeLeft])
 
   useEffect(() => {
-    if (!isActive || isPaused) return
-    if (countdown <= 0) {
-      onEnd()
-      return
+    // Clear existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
     }
-    const timer = setInterval(() => {
-      setCountdown(prev => prev - 1)
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [isActive, isPaused, countdown, onEnd])
+
+    // Start new interval if active and not paused
+    if (isActive && !isPaused) {
+      intervalRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current)
+              intervalRef.current = null
+            }
+            if (!hasEnded.current) {
+              hasEnded.current = true
+              onEnd()
+            }
+            return 0
+          }
+          
+          // Play sound at last second
+          if (prev === 2 && enableSound && !hasPlayedSound.current && audioRef.current) {
+            hasPlayedSound.current = true
+            audioRef.current.currentTime = 0
+            audioRef.current.play().catch(err => console.log('Audio play failed:', err))
+          }
+          
+          return prev - 1
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+  }, [isActive, isPaused, onEnd, enableSound])
 
   const getCategoryIcon = (category: string): string => {
     const icons: Record<string, string> = {
@@ -146,7 +187,14 @@ function BreakView({ isActive, timeLeft, onEnd }: BreakViewProps) {
         <div className="px-8 py-6 border-t border-white/5 flex items-center justify-between">
           <button
             className="h-12 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium px-6 hover:bg-accent hover:text-primary cursor-pointer flex items-center gap-2"
-            onClick={() => setIsPaused(p => !p)}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              const now = Date.now()
+              if (now - lastClickTime.current < 300) return // Debounce 300ms
+              lastClickTime.current = now
+              setIsPaused(p => !p)
+            }}
           >
             {isPaused ? (
               <>

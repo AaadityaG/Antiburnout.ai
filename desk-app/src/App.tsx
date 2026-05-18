@@ -74,14 +74,15 @@ function App() {
     }
   }, [isAuthenticated, token, settings.breakInterval, settings.breakDuration, settings.autoStart, settings.fetched])
 
-  const handleApplySettings = useCallback((interval: number, duration: number) => {
-    console.log('App.tsx - handleApplySettings called with:', { interval, duration })
+  const handleApplySettings = useCallback((interval: number, duration: number, soundEnabled: boolean) => {
+    console.log('App.tsx - handleApplySettings called with:', { interval, duration, soundEnabled })
     
     // Immediately notify Electron with new settings
     window.electronAPI?.sendUpdateTimerSetting({
       interval,   // seconds
       duration,   // seconds
-      autoStart: true
+      autoStart: true,
+      enableSound: soundEnabled
     })
     
     // Also update backend if authenticated
@@ -92,7 +93,8 @@ function App() {
         settings: { 
           break_interval: interval,   // Already in seconds
           break_duration: duration,   // Already in seconds
-          auto_start: true
+          auto_start: true,
+          enable_sound: soundEnabled
         }
       }))
     }
@@ -306,6 +308,7 @@ function App() {
         onClose={() => setIsSettingsOpen(false)}
         initialInterval={settings.breakInterval}
         initialDuration={settings.breakDuration}
+        enableSound={settings.enableSound}
         onApply={handleApplySettings}
       />
 
@@ -320,6 +323,7 @@ function App() {
         isActive={isBreakActive}
         timeLeft={breakTimeLeft}
         onEnd={handleEndBreak}
+        enableSound={settings.enableSound}
       />
 
       <ChatOverlay isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />

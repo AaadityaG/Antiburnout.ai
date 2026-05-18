@@ -14,6 +14,7 @@ export interface TimerSetting {
   interval: number
   duration: number
   autoStart: boolean
+  enableSound: boolean
 }
 
 export interface ElectronAPI {

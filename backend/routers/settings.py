@@ -9,6 +9,7 @@ class UserSettings(BaseModel):
     break_interval: int = 1800  # seconds (30 minutes)
     break_duration: int = 90    # seconds (1 minute 30 seconds)
     auto_start: bool = True
+    enable_sound: bool = True   # Enable countdown sound
 
 @router.get("/user", response_model=UserSettings)
 async def get_user_settings(token: str):
@@ -56,7 +57,8 @@ async def update_user_settings(settings: UserSettings, token: str):
         settings_data = {
             "break_interval": settings.break_interval,
             "break_duration": settings.break_duration,
-            "auto_start": settings.auto_start
+            "auto_start": settings.auto_start,
+            "enable_sound": settings.enable_sound
         }
         
         settings_db.save_user_settings(user_id, settings_data)

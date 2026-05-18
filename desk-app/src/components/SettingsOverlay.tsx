@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { fromTotalSeconds, toTotalSeconds } from '../store/settingsSlice'
+import { useToast } from '../context/ToastContext'
 
 interface SettingsOverlayProps {
   isOpen: boolean
   onClose: () => void
   initialInterval: number  // in seconds
   initialDuration: number  // in seconds
-  onApply: (interval: number, duration: number) => void  // expects seconds
+  enableSound: boolean
+  onApply: (interval: number, duration: number, enableSound: boolean) => void  // expects seconds
 }
 
 interface TimeInput {
@@ -21,35 +23,42 @@ function clamp(val: string, min: number, max: number): number {
   return Math.min(max, Math.max(min, n))
 }
 
-function SettingsOverlay({ isOpen, onClose, initialInterval, initialDuration, onApply }: SettingsOverlayProps) {
+function SettingsOverlay({ isOpen, onClose, initialInterval, initialDuration, enableSound: initialEnableSound, onApply }: SettingsOverlayProps) {
+  const toast = useToast()
   const initialIntervalTime = fromTotalSeconds(initialInterval)
   const initialDurationTime = fromTotalSeconds(initialDuration)
 
   const [intervalTime, setIntervalTime] = useState<TimeInput>(initialIntervalTime)
   const [durationTime, setDurationTime] = useState<TimeInput>(initialDurationTime)
+  const [enableSound, setEnableSound] = useState(initialEnableSound)
 
   useEffect(() => {
     if (isOpen) {
       setIntervalTime(fromTotalSeconds(initialInterval))
       setDurationTime(fromTotalSeconds(initialDuration))
+      setEnableSound(initialEnableSound)
     }
-  }, [isOpen, initialInterval, initialDuration])
+  }, [isOpen, initialInterval, initialDuration, initialEnableSound])
 
   const handleApply = () => {
     const intervalSeconds = toTotalSeconds(intervalTime.hours, intervalTime.minutes, intervalTime.seconds)
     const durationSeconds = toTotalSeconds(durationTime.hours, durationTime.minutes, durationTime.seconds)
 
-    const finalInterval = Math.max(1, intervalSeconds)  // Minimum 1 second
-    const finalDuration = Math.max(1, durationSeconds)  // Minimum 1 second
+    // Validation: minimum 30 seconds
+    if (intervalSeconds < 30 || durationSeconds < 30) {
+      toast.error('Invalid Duration', 'Both break interval and break duration must be at least 30 seconds.')
+      return
+    }
 
     console.log('SettingsOverlay - Applying settings:', { 
       intervalTime, 
       durationTime, 
-      finalInterval, 
-      finalDuration 
+      finalInterval: intervalSeconds, 
+      finalDuration: durationSeconds,
+      enableSound
     })
 
-    onApply(finalInterval, finalDuration)
+    onApply(intervalSeconds, durationSeconds, enableSound)
     onClose()
   }
 
@@ -164,6 +173,31 @@ function SettingsOverlay({ isOpen, onClose, initialInterval, initialDuration, on
                 />
               </div>
             </div>
+          </div>
+
+          {/* Sound Toggle */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-200/50">Countdown Sound</label>
+              <span className="text-xs text-accent/60 font-medium">{enableSound ? 'Enabled' : 'Disabled'}</span>
+            </div>
+            <button
+              className={`w-full h-14 rounded-2xl border transition-all duration-300 cursor-pointer flex items-center justify-between px-6 ${
+                enableSound 
+                  ? 'bg-accent/10 border-accent/30' 
+                  : 'bg-white/5 border-white/10'
+              }`}
+              onClick={() => setEnableSound(!enableSound)}
+            >
+              <span className="text-sm text-white/70">Play tone at last second</span>
+              <div className={`w-12 h-6 rounded-full transition-all duration-300 relative ${
+                enableSound ? 'bg-primary' : 'bg-white/20'
+              }`}>
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${
+                  enableSound ? 'left-7' : 'left-1'
+                }`} />
+              </div>
+            </button>
           </div>
         </div>
 
