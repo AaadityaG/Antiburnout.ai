@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchSettings, updateSettings, clearSettings } from './store/settingsSlice'
 import { fetchTipRecommendation, clearTip } from './store/tipSlice'
+import { saveSession } from './store/activitySlice'
 import type { RootState, AppDispatch } from './store'
 import ProfileOverlay from './components/ProfileOverlay'
 import LoginModal from './components/LoginModal'
@@ -110,21 +111,38 @@ function App() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
+// Track if session was completed naturally (timer reached 0)
+  const sessionCompletedRef = useRef(false)
+  const sessionStartTimeRef = useRef<number>(0)
+
   // Timer logic and IPC listeners
   useEffect(() => {
     if (!window.electronAPI) return
 
     const cleanupTimerUpdate = window.electronAPI.onTimerUpdate((time) => setTimeRemaining(time))
     const cleanupTimerReset = window.electronAPI.onTimerReset(() => {
-      setTimeRemaining(settings.breakInterval * 1000) // Convert seconds to ms
+      const elapsed = Math.floor((Date.now() - sessionStartTimeRef.current) / 1000)
+      if (!sessionCompletedRef.current && token && elapsed > 10) {
+        dispatch(saveSession({
+          token,
+          sessionDuration: elapsed,
+          targetDuration: settings.breakInterval,
+          completed: false,
+          skipped: true
+        }))
+      }
+      sessionCompletedRef.current = false
+      setTimeRemaining(settings.breakInterval * 1000)
       setIsPaused(false)
     })
     const cleanupBreakTime = window.electronAPI.onBreakTime((data) => {
+      sessionCompletedRef.current = true
+      sessionStartTimeRef.current = Date.now()
       if (data.duration) setBreakTimeLeft(data.duration)
       setIsBreakActive(true)
     })
     const cleanupSettingsUpdated = window.electronAPI.onSettingsUpdated((data) => {
-      setTimeRemaining(data.interval * 1000)  // Convert seconds to ms
+      setTimeRemaining(data.interval * 1000)
     })
 
     return () => {
@@ -133,7 +151,7 @@ function App() {
       cleanupBreakTime()
       cleanupSettingsUpdated()
     }
-  }, [settings])
+  }, [settings, token, dispatch])
 
   // Break timer countdown
   useEffect(() => {
@@ -186,11 +204,20 @@ function App() {
   }, [])
 
   const handleEndBreak = useCallback(() => {
+    if (token) {
+      const elapsedSeconds = Math.floor((settings.breakInterval * 1000 - timeRemaining) / 1000)
+      dispatch(saveSession({
+        token,
+        sessionDuration: elapsedSeconds,
+        targetDuration: settings.breakInterval,
+        completed: true,
+        skipped: false
+      }))
+    }
     setIsBreakActive(false)
     window.electronAPI?.sendResetTimer()
-    // Minimize app to tray after ending break
     window.electronAPI?.sendMinimizeToTray()
-  }, [])
+  }, [token, timeRemaining, settings.breakInterval, dispatch])
 
   const progress = ((settings.breakInterval * 1000 - timeRemaining) / (settings.breakInterval * 1000)) * 100
   const circumference = 2 * Math.PI * 270

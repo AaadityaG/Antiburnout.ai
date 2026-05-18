@@ -3,13 +3,15 @@ import authReducer from './authSlice'
 import settingsReducer from './settingsSlice'
 import chatReducer from './chatSlice'
 import tipReducer from './tipSlice'
+import activityReducer from './activitySlice'
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     settings: settingsReducer,
     chat: chatReducer,
-    tips: tipReducer
+    tips: tipReducer,
+    activity: activityReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

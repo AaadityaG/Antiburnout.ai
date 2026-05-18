@@ -27,13 +27,15 @@ try:
     users_collection = db["users"]
     settings_collection = db["settings"]
     chat_history_collection = db["chatbot-history"]
-    
+    activity_collection = db["activity"]
+
     # Create indexes for faster lookups
     users_collection.create_index("device_id", unique=True)
     users_collection.create_index("email")
     settings_collection.create_index("user_id", unique=True)
     chat_history_collection.create_index("user_id")
     chat_history_collection.create_index("created_at")
+    activity_collection.create_index([("user_id", 1), ("date", -1)])
     
     print(f"✓ MongoDB Connected Successfully!")
     print(f"✓ Database: {MONGODB_DB_NAME}")
@@ -330,3 +332,99 @@ class ChatHistoryDB:
 
 
 chat_history_db = ChatHistoryDB()
+
+class ActivityDB:
+    def save_session(self, user_id: str, session_data: dict) -> dict:
+        from bson import ObjectId
+        from datetime import datetime
+        try:
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+            existing = activity_collection.find_one({
+                "user_id": ObjectId(user_id),
+                "date": today
+            })
+            if existing:
+                activity_collection.update_one(
+                    {"_id": existing["_id"]},
+                    {
+                        "$push": {
+                            "sessions": {
+                                "session_duration": session_data["session_duration"],
+                                "target_duration": session_data["target_duration"],
+                                "completed": session_data["completed"],
+                                "skipped": session_data.get("skipped", False),
+                                "timestamp": datetime.utcnow()
+                            }
+                        },
+                        "$inc": {
+                            "total_session_duration": session_data["session_duration"],
+                            "total_breaks_taken": 1,
+                            "total_breaks_skipped": 1 if session_data.get("skipped") else 0
+                        },
+                        "$set": {"last_updated": datetime.utcnow()}
+                    }
+                )
+            else:
+                activity_collection.insert_one({
+                    "user_id": ObjectId(user_id),
+                    "date": today,
+                    "sessions": [{
+                        "session_duration": session_data["session_duration"],
+                        "target_duration": session_data["target_duration"],
+                        "completed": session_data["completed"],
+                        "skipped": session_data.get("skipped", False),
+                        "timestamp": datetime.utcnow()
+                    }],
+                    "total_session_duration": session_data["session_duration"],
+                    "total_breaks_taken": 1,
+                    "total_breaks_skipped": 1 if session_data.get("skipped") else 0,
+                    "last_updated": datetime.utcnow()
+                })
+            return {"status": "ok", "date": today}
+        except Exception as e:
+            print(f"[ActivityDB] Error saving session: {e}")
+            raise
+
+    def get_user_activity(self, user_id: str, days: int = 7) -> list:
+        from bson import ObjectId
+        from datetime import datetime, timedelta
+        try:
+            start_date = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+            records = list(
+                activity_collection.find({
+                    "user_id": ObjectId(user_id),
+                    "date": {"$gte": start_date}
+                }).sort("date", -1)
+            )
+            formatted = []
+            for r in records:
+                formatted.append({
+                    "date": r["date"],
+                    "total_session_duration": r.get("total_session_duration", 0),
+                    "total_breaks_taken": r.get("total_breaks_taken", 0),
+                    "total_breaks_skipped": r.get("total_breaks_skipped", 0),
+                    "sessions_count": len(r.get("sessions", []))
+                })
+            return formatted
+        except Exception as e:
+            print(f"[ActivityDB] Error getting activity: {e}")
+            return []
+
+    def get_user_activity_by_date(self, user_id: str, date: str) -> Optional[dict]:
+        from bson import ObjectId
+        try:
+            record = activity_collection.find_one({
+                "user_id": ObjectId(user_id),
+                "date": date
+            })
+            if record:
+                record["id"] = str(record["_id"])
+                record.pop("_id", None)
+                record.pop("user_id", None)
+                return record
+            return None
+        except Exception as e:
+            print(f"[ActivityDB] Error getting activity by date: {e}")
+            return None
+
+activity_db = ActivityDB()
