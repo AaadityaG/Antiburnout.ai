@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchSettings, updateSettings, clearSettings } from './store/settingsSlice'
-import { logout as logoutAction } from './store/authSlice'
+import { fetchTipRecommendation, clearTip } from './store/tipSlice'
 import type { RootState, AppDispatch } from './store'
 import ProfileOverlay from './components/ProfileOverlay'
 import LoginModal from './components/LoginModal'
@@ -39,6 +39,7 @@ function App() {
     if (!isAuthenticated) {
       // User logged out - reset all states
       dispatch(clearSettings())
+      dispatch(clearTip())
       setTimeRemaining(30 * 60 * 1000)  // Reset to default
       setBreakTimeLeft(20)  // Reset to default
       setIsPaused(false)
@@ -144,6 +145,27 @@ function App() {
     }
     return () => clearInterval(interval)
   }, [isBreakActive, breakTimeLeft])
+
+  // Fetch tip recommendation 5 seconds before break starts (when work timer hits 5s)
+  const hasFetchedTip = useRef(false)
+  useEffect(() => {
+    // When work timer reaches 5 seconds (5000ms), fetch tip for upcoming break
+    if (!isBreakActive && timeRemaining > 0 && timeRemaining <= 5000 && token && !hasFetchedTip.current) {
+      console.log('Fetching tip recommendation for upcoming break...')
+      dispatch(fetchTipRecommendation(token))
+      hasFetchedTip.current = true
+    }
+    
+    // Reset flag when break ends or timer is reset
+    if (isBreakActive === false && timeRemaining > 5000) {
+      hasFetchedTip.current = false
+    }
+    
+    // Clear tip when break ends
+    if (!isBreakActive && timeRemaining === settings.breakInterval * 60 * 1000) {
+      dispatch(clearTip())
+    }
+  }, [isBreakActive, timeRemaining, token, dispatch, settings.breakInterval])
 
   const togglePause = useCallback(() => {
     if (isPaused) window.electronAPI?.sendResumeTimer()
