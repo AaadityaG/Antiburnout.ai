@@ -7,8 +7,9 @@
   --color-glass: rgba(255, 255, 255, 0.08);
   --color-glass-heavy: rgba(20, 30, 20, 0.85);
   
-  --font-sans: 'Outfit', sans-serif;
+  --font-sans: 'Bricolage Grotesque', 'Outfit', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Bricolage Grotesque', sans-serif;
   
   --animate-breathe: breathe 8s infinite ease-in-out;
 }
@@ -35,6 +36,8 @@
 
 body {
   @apply bg-bg-dark text-white font-sans overflow-hidden h-screen;
+  font-optical-sizing: auto;
+  font-variation-settings: "wdth" 100;
 }
 
 @keyframes fadeIn {

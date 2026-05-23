@@ -21,6 +21,7 @@ function App() {
   const [isPaused, setIsPaused] = useState(false)
   const [isBreakActive, setIsBreakActive] = useState(false)
   const [breakTimeLeft, setBreakTimeLeft] = useState(90) // Will be updated when settings load
+  const [isBreakPaused, setIsBreakPaused] = useState(false) // Break view pause state
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
@@ -45,6 +46,7 @@ function App() {
       setBreakTimeLeft(90)  // Reset to default (1 minute 30 seconds)
       setIsPaused(false)
       setIsBreakActive(false)
+      setIsBreakPaused(false) // Reset break pause state
       hasInitializedTimer.current = false  // Allow re-initialization on next login
       
       // Stop Electron timer
@@ -69,7 +71,8 @@ function App() {
       window.electronAPI?.sendUpdateTimerSetting({
         interval: settings.breakInterval,
         duration: settings.breakDuration,
-        autoStart: settings.autoStart
+        autoStart: settings.autoStart,
+        enableSound: settings.enableSound
       })
     }
   }, [isAuthenticated, token, settings.breakInterval, settings.breakDuration, settings.autoStart, settings.fetched])
@@ -142,6 +145,7 @@ function App() {
       sessionStartTimeRef.current = Date.now()
       if (data.duration) setBreakTimeLeft(data.duration)
       setIsBreakActive(true)
+      setIsBreakPaused(false) // Reset break pause when break starts
     })
     const cleanupSettingsUpdated = window.electronAPI.onSettingsUpdated((data) => {
       setTimeRemaining(data.interval * 1000)
@@ -155,14 +159,15 @@ function App() {
     }
   }, [settings, token, dispatch])
 
-  // Break timer countdown
+  // Break timer countdown - respects isBreakPaused state
   useEffect(() => {
     let interval: any = null
-    if (isBreakActive && breakTimeLeft > 0) {
+    if (isBreakActive && breakTimeLeft > 0 && !isBreakPaused) {
       interval = setInterval(() => {
         setBreakTimeLeft(prev => {
           if (prev <= 1) {
             setIsBreakActive(false)
+            setIsBreakPaused(false)
             window.electronAPI?.sendTimerBreakComplete()
             return 0
           }
@@ -171,7 +176,7 @@ function App() {
       }, 1000)
     }
     return () => clearInterval(interval)
-  }, [isBreakActive, breakTimeLeft])
+  }, [isBreakActive, breakTimeLeft, isBreakPaused])
 
   // Fetch tip recommendation 5 seconds before break starts (when work timer hits 5s)
   const hasFetchedTip = useRef(false)
@@ -217,9 +222,18 @@ function App() {
       }))
     }
     setIsBreakActive(false)
+    setIsBreakPaused(false)
     window.electronAPI?.sendResetTimer()
     window.electronAPI?.sendMinimizeToTray()
   }, [token, timeRemaining, settings.breakInterval, dispatch])
+
+  const handlePauseBreak = useCallback(() => {
+    setIsBreakPaused(true)
+  }, [])
+
+  const handleResumeBreak = useCallback(() => {
+    setIsBreakPaused(false)
+  }, [])
 
   const progress = ((settings.breakInterval * 1000 - timeRemaining) / (settings.breakInterval * 1000)) * 100
   const circumference = 2 * Math.PI * 270
@@ -322,6 +336,9 @@ function App() {
       <BreakView
         isActive={isBreakActive}
         timeLeft={breakTimeLeft}
+        isPaused={isBreakPaused}
+        onPause={handlePauseBreak}
+        onResume={handleResumeBreak}
         onEnd={handleEndBreak}
         enableSound={settings.enableSound}
       />

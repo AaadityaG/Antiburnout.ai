@@ -3,10 +3,19 @@ import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+interface ActivityDay {
+  date: string
+  total_session_duration: number
+  total_breaks_taken: number
+  total_breaks_skipped: number
+  sessions_count: number
+}
+
 interface ActivityState {
   todaySessions: number
   todayDuration: number
   todaySkipped: number
+  history: ActivityDay[]
   isLoading: boolean
   error: string | null
 }
@@ -15,6 +24,7 @@ const initialState: ActivityState = {
   todaySessions: 0,
   todayDuration: 0,
   todaySkipped: 0,
+  history: [],
   isLoading: false,
   error: null
 }
@@ -65,6 +75,17 @@ export const fetchTodayActivity = createAsyncThunk(
   }
 )
 
+export const fetchActivityHistory = createAsyncThunk(
+  'activity/fetchHistory',
+  async ({ token, days = 7 }: { token: string; days?: number }) => {
+    console.log(`[Activity] Fetching activity history for ${days} days...`)
+    const response = await axios.get(`${API_URL}/activity/history`, {
+      params: { token, days }
+    })
+    return response.data
+  }
+)
+
 export const activitySlice = createSlice({
   name: 'activity',
   initialState,
@@ -73,6 +94,7 @@ export const activitySlice = createSlice({
       state.todaySessions = 0
       state.todayDuration = 0
       state.todaySkipped = 0
+      state.history = []
       state.isLoading = false
       state.error = null
     }
@@ -105,6 +127,18 @@ export const activitySlice = createSlice({
       .addCase(fetchTodayActivity.rejected, (state, action) => {
         state.isLoading = false
         state.error = action.error.message || 'Failed to fetch activity'
+      })
+      .addCase(fetchActivityHistory.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(fetchActivityHistory.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.history = action.payload
+      })
+      .addCase(fetchActivityHistory.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.error.message || 'Failed to fetch history'
       })
   }
 })
