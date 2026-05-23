@@ -21,6 +21,12 @@ interface TimerSetting {
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getMachineId: () => ipcRenderer.invoke('get-machine-id'),
+  getSystemBrightness: () => ipcRenderer.invoke('get-system-brightness'),
+  getSystemVolume: () => ipcRenderer.invoke('get-system-volume'),
+  getNightModeStatus: () => ipcRenderer.invoke('get-night-mode-status'),
+  setSystemBrightness: (brightness: number) => ipcRenderer.invoke('set-system-brightness', brightness),
+  setSystemVolume: (volume: number) => ipcRenderer.invoke('set-system-volume', volume),
+  setNightMode: (enabled: boolean, intensity?: number) => ipcRenderer.invoke('set-night-mode', enabled, intensity),
   
   // Listen for events from main process
   onTimerUpdate: (callback: (time: number) => void) => {

@@ -11,6 +11,7 @@ import InsightsOverlay from './components/InsightsOverlay'
 import BreakView from './components/BreakView'
 import ChatOverlay from './components/ChatOverlay'
 import MusicOverlay from './components/MusicOverlay'
+import AgentRecommendation from './components/AgentRecommendation'
 
 function App() {
   const dispatch = useDispatch<AppDispatch>()
@@ -285,7 +286,7 @@ function App() {
           {isPaused ? 'Paused' : 'Next break in...'}
         </div>
 
-        <div className="mt-40 flex gap-4 items-center">
+        <div className=" absolute -bottom-9/12 flex gap-4 items-center">
           <button onClick={resetTimer} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 active:scale-90 transition-all duration-150 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           </button>
@@ -310,10 +311,17 @@ function App() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
           </button>
 
-          <button onClick={() => setIsChatOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 active:scale-90 transition-all duration-150 cursor-pointer">
+          <button onClick={() => setIsChatOpen(true)} className="w-14 h-14 absolute -right-11/12 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 active:scale-90 transition-all duration-150 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           </button>
         </div>
+
+        {/* Agent Recommendation */}
+        <div className="mt-8">
+          <AgentRecommendation onChatOpen={() => setIsChatOpen(true)} />
+        </div>
+
+        
       </main>
 
       {/* Settings Overlay */}

@@ -1,9 +1,10 @@
-import { app, BrowserWindow, Tray, Menu, ipcMain } from 'electron'
+import { app, BrowserWindow, Tray, Menu, ipcMain, screen } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import AutoLaunch from 'auto-launch'
-import { execSync } from 'child_process'
+import { execSync, exec } from 'child_process'
 import crypto from 'crypto'
+import loudness from 'loudness'
 // __dirname and __filename are available as globals in CommonJS
 
 let mainWindow: BrowserWindow | null = null
@@ -349,6 +350,125 @@ ipcMain.on('quit-app', () => {
 
 ipcMain.handle('get-machine-id', () => {
   return getMachineId()
+})
+
+// Get system brightness (Windows)
+ipcMain.handle('get-system-brightness', async () => {
+  try {
+    if (process.platform === 'win32') {
+      console.log('Detecting system brightness...')
+      const output = execSync(
+        'powershell -command "(Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightness).CurrentBrightness"',
+        { encoding: 'utf8', timeout: 5000 }
+      ).trim()
+      
+      const brightness = parseInt(output)
+      if (!isNaN(brightness) && brightness >= 0 && brightness <= 100) {
+        console.log('Brightness detected:', brightness)
+        return brightness
+      }
+      console.log('Invalid brightness value:', output)
+      return null
+    }
+    return null
+  } catch (error) {
+    console.error('Failed to get brightness:', error)
+    return null
+  }
+})
+
+// Get system volume (Windows)
+ipcMain.handle('get-system-volume', async () => {
+  try {
+    console.log('Detecting system volume...')
+    const volume = await loudness.getVolume()
+    console.log('Volume detected:', volume)
+    return volume
+  } catch (error) {
+    console.error('Failed to get volume:', error)
+    return null
+  }
+})
+
+// Check if night light is enabled (Windows)
+ipcMain.handle('get-night-mode-status', async () => {
+  try {
+    if (process.platform === 'win32') {
+      const output = execSync(
+        'powershell -command "Get-ItemProperty -Path \'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CloudStore\\Store\\Cache\\CurrentWindow\\$state.windows.light\\$primary\' -Name \'Data\' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Data"',
+        { encoding: 'utf8' }
+      ).trim()
+      
+      // Simpler check via registry
+      const nightLightEnabled = execSync(
+        'powershell -command "try { $key = Get-ItemProperty \'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\NightLight\'; if ($key.NightLightEnabled -eq 1) { echo \'true\' } else { echo \'false\' } } catch { echo \'false\' }"',
+        { encoding: 'utf8' }
+      ).trim()
+      
+      return nightLightEnabled === 'true'
+    }
+    return false
+  } catch (error) {
+    console.error('Failed to get night mode status:', error)
+    return false
+  }
+})
+
+// Set system brightness (Windows)
+ipcMain.handle('set-system-brightness', async (event, brightness: number) => {
+  try {
+    if (process.platform === 'win32') {
+      console.log('Setting brightness to:', brightness)
+      
+      // Use WMI to set brightness
+      execSync(
+        `powershell -command "(Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightnessMethods).WmiSetBrightness(0, ${brightness})"`,
+        { encoding: 'utf8', timeout: 5000 }
+      )
+      
+      console.log('Brightness set successfully')
+      return { success: true, brightness }
+    }
+    return { success: false, error: 'Not supported on this platform' }
+  } catch (error) {
+    console.error('Failed to set brightness:', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// Set system volume (Windows)
+ipcMain.handle('set-system-volume', async (event, volume: number) => {
+  try {
+    console.log('Setting volume to:', volume)
+    await loudness.setVolume(volume)
+    console.log('Volume set successfully')
+    return { success: true, volume }
+  } catch (error) {
+    console.error('Failed to set volume:', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// Enable/disable night light (Windows)
+ipcMain.handle('set-night-mode', async (event, enabled: boolean, intensity?: number) => {
+  try {
+    if (process.platform === 'win32') {
+      console.log('Setting night light:', enabled, 'intensity:', intensity)
+      
+      const value = enabled ? 1 : 0
+      execSync(
+        `powershell -command "Set-ItemProperty -Path \'HKCU:\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\NightLight\' -Name \'NightLightEnabled\' -Value ${value}"`,
+        { encoding: 'utf8', timeout: 3000 }
+      )
+      
+      console.log('Night light set successfully')
+      return { success: true, enabled, intensity }
+    }
+    return { success: false, error: 'Not supported on this platform' }
+  } catch (error) {
+    console.error('Failed to set night mode:', error)
+    return { success: false, error: String(error) }
+  }
 })
 
 app.whenReady().then(() => {

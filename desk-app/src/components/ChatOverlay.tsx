@@ -5,7 +5,7 @@ import { fetchSessions, fetchSessionMessages, deleteSession, clearAllHistory } f
 import axios from 'axios'
 import ConfirmDialog from './ConfirmDialog'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL 
 
 interface ChatOverlayProps {
   isOpen: boolean
@@ -18,14 +18,14 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
   const { sessions, isLoading } = useSelector((state: RootState) => state.chat)
   const user = useSelector((state: RootState) => state.auth.user)
   
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; recommendations?: any[] }>>([
     { role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }
   ])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [selectedModelKey, setSelectedModelKey] = useState<string>('')
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
@@ -142,18 +142,52 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
         content: msg.content
       }))
 
+      // Get real system metrics from Electron
+      let brightness: number | null = null
+      let volume: number | null = null
+      let nightModeEnabled: boolean = false
+      
+      if (window.electronAPI) {
+        try {
+          brightness = await window.electronAPI.getSystemBrightness()
+        } catch (e) {
+          console.log('Brightness not available:', e)
+        }
+        
+        try {
+          volume = await window.electronAPI.getSystemVolume()
+        } catch (e) {
+          console.log('Volume not available:', e)
+        }
+        
+        try {
+          nightModeEnabled = await window.electronAPI.getNightModeStatus()
+        } catch (e) {
+          console.log('Night mode not available:', e)
+        }
+      }
+
+      console.log('Sending chat with system metrics:', { brightness, volume, nightModeEnabled })
+
       const response = await axios.post(`${API_URL}/chat/send`, {
         message: userMessage,
         conversation_history: conversationHistory,
         model_key: selectedModelKey,
-        session_id: activeSessionId || undefined
+        session_id: activeSessionId || undefined,
+        brightness: brightness,
+        volume: volume,
+        is_night_mode_enabled: nightModeEnabled
       }, {
         params: { token }
       })
 
+      console.log('Chat response received:', response.data)
+      console.log('Recommendations:', response.data.recommendations)
+
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: response.data.response
+        content: response.data.response,
+        recommendations: response.data.recommendations || []
       }])
 
       if (response.data.session_id && !activeSessionId) {
@@ -379,20 +413,93 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
               ) : (
                 <div className="space-y-4">
                   {messages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} ${idx > 0 ? 'motion-safe:animate-[fadeIn_0.2s_ease-out]' : ''}`}
-                    >
-                      <div
-                        className={`
-                          max-w-[80%] px-6 py-4 rounded-2xl text-base leading-relaxed
-                          ${msg.role === 'user'
-                            ? 'bg-accent/15 border border-accent/25 text-white rounded-br-md'
-                            : 'bg-white/[0.04] border border-white/[0.06] text-green-200/80 rounded-bl-md'
-                          }
-                        `}
-                      >
+                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} ${idx > 0 ? 'motion-safe:animate-[fadeIn_0.2s_ease-out]' : ''}`}>
+                      <div className={`max-w-[80%] px-6 py-4 rounded-2xl text-base leading-relaxed ${msg.role === 'user' ? 'bg-accent/15 border border-accent/25 text-white rounded-br-md' : 'bg-white/[0.04] border border-white/[0.06] text-green-200/80 rounded-bl-md'}`}>
                         {msg.content}
+                        
+                        {/* Render executable recommendations */}
+                        {msg.recommendations && msg.recommendations.length > 0 && (
+                          <div className="mt-4 space-y-3">
+                            <div className="text-xs font-semibold text-white/60 uppercase tracking-wide">Recommended Actions:</div>
+                            {msg.recommendations.filter((rec: any) => rec.action_type === 'execute').map((rec: any) => (
+                              <div key={rec.id} className="p-4 rounded-xl bg-white/5 border border-white/10 transition-all">
+                                <div className="flex items-start gap-3 mb-3">
+                                  <span className="text-2xl">
+                                    {rec.type === 'brightness' ? '☀️' : rec.type === 'volume' ? '🔊' : rec.type === 'night_mode' ? '🌙' : '⏸️'}
+                                  </span>
+                                  <div className="flex-1">
+                                    <div className="text-sm font-semibold text-white/90">{rec.title}</div>
+                                    <div className="text-xs text-white/60 mt-1">{rec.message}</div>
+                                  </div>
+                                </div>
+                                {rec.execute_params && (
+                                  <div className="flex gap-2 mt-3">
+                                    <button
+                                      className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 cursor-pointer transition-all"
+                                      onClick={async (e) => {
+                                        const btn = e.currentTarget
+                                        try {
+                                          if (window.electronAPI) {
+                                            let result = { success: false }
+                                            switch (rec.type) {
+                                              case 'brightness':
+                                                result = await window.electronAPI.setSystemBrightness(rec.execute_params.target_brightness)
+                                                break
+                                              case 'volume':
+                                                result = await window.electronAPI.setSystemVolume(rec.execute_params.target_volume)
+                                                break
+                                              case 'night_mode':
+                                                result = await window.electronAPI.setNightMode(rec.execute_params.enabled, rec.execute_params.intensity)
+                                                break
+                                            }
+                                            if (result.success) {
+                                              btn.innerHTML = '✅ Applied!'
+                                              btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-green-500/20 border border-green-500/30 text-green-400 cursor-default'
+                                              // Disable reject button
+                                              const parent = btn.parentElement
+                                              if (parent) {
+                                                const rejectBtn = parent.querySelector('button:last-child') as HTMLButtonElement
+                                                if (rejectBtn) {
+                                                  rejectBtn.disabled = true
+                                                  rejectBtn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                                                }
+                                              }
+                                            }
+                                          }
+                                        } catch (error) {
+                                          console.error('Failed to execute:', error)
+                                          btn.innerHTML = '❌ Failed'
+                                          setTimeout(() => { btn.innerHTML = '✨ Execute' }, 2000)
+                                        }
+                                      }}
+                                    >
+                                      ✨ Execute
+                                    </button>
+                                    <button
+                                      className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/10 border border-white/20 text-white/70 hover:bg-white/15 cursor-pointer transition-all"
+                                      onClick={(e) => {
+                                        const btn = e.currentTarget
+                                        btn.innerHTML = '🗑️ Dismissed'
+                                        btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/40 cursor-default'
+                                        // Disable execute button
+                                        const parent = btn.parentElement
+                                        if (parent) {
+                                          const execBtn = parent.querySelector('button:first-child') as HTMLButtonElement
+                                          if (execBtn) {
+                                            execBtn.disabled = true
+                                            execBtn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
