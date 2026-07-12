@@ -1,8 +1,8 @@
 import os
+import uuid
 from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
-from pymongo import MongoClient
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -12,45 +12,82 @@ load_dotenv()
 MONGODB_URI = os.getenv("MONGODB_URI")
 MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "app_local")
 
+USE_MONGO = False
+client = None
+db = None
+users_collection = None
+settings_collection = None
+chat_history_collection = None
+activity_collection = None
+
 print(f"Connecting to MongoDB...")
-print(f"URI: {MONGODB_URI[:20]}...****")
+print(f"URI: {MONGODB_URI[:20] if MONGODB_URI else 'N/A'}...****")
 print(f"Database: {MONGODB_DB_NAME}")
 
 try:
-    # Initialize MongoDB client with TLS/SSL configuration
+    from pymongo import MongoClient
     client = MongoClient(
         MONGODB_URI,
         serverSelectionTimeoutMS=10000,
         connectTimeoutMS=10000,
         socketTimeoutMS=10000,
         tls=True,
+        tlsAllowInvalidCertificates=False,
         retryWrites=True,
         w="majority"
     )
-    # Test connection
     client.admin.command('ping')
     db = client[MONGODB_DB_NAME]
-    
-    # Collections
+
     users_collection = db["users"]
     settings_collection = db["settings"]
     chat_history_collection = db["chatbot-history"]
     activity_collection = db["activity"]
 
-    # Create indexes for faster lookups
     users_collection.create_index("device_id", unique=True)
     users_collection.create_index("email")
     settings_collection.create_index("user_id", unique=True)
     chat_history_collection.create_index("user_id")
     chat_history_collection.create_index("created_at")
     activity_collection.create_index([("user_id", 1), ("date", -1)])
-    
-    print(f"✓ MongoDB Connected Successfully!")
-    print(f"✓ Database: {MONGODB_DB_NAME}")
-    print(f"✓ Collections: users, settings")
+
+    USE_MONGO = True
+    print(f"[OK] MongoDB Connected Successfully!")
+    print(f"[OK] Database: {MONGODB_DB_NAME}")
+    print(f"[OK] Collections: users, settings")
 except Exception as e:
-    print(f"✗ MongoDB Connection Failed: {str(e)}")
-    raise
+    print(f"[WARN] MongoDB Connection Failed: {str(e)[:80]}")
+    print(f"[WARN] Using file-backed storage (data persists in local_db.json)")
+
+    import json as _json
+    _DB_FILE = os.path.join(os.path.dirname(__file__), "local_db.json")
+
+    def _load_db():
+        if os.path.exists(_DB_FILE):
+            with open(_DB_FILE, "r", encoding="utf-8") as f:
+                return _json.load(f)
+        return {"users": [], "settings": {}, "chat_history": [], "activity": []}
+
+    def _save_db(data):
+        with open(_DB_FILE, "w", encoding="utf-8") as f:
+            _json.dump(data, f, indent=2, default=str)
+
+    _db_data = _load_db()
+    _mem_users = _db_data["users"]
+    _mem_settings = _db_data["settings"]
+    _mem_chat_history = _db_data.get("chat_history", [])
+    _mem_activity = _db_data.get("activity", [])
+
+    def _persist():
+        _save_db({"users": _mem_users, "settings": _mem_settings, "chat_history": _mem_chat_history, "activity": _mem_activity})
+
+
+def _gen_id():
+    return str(uuid.uuid4())
+
+
+def _now():
+    return datetime.utcnow()
 
 
 class User(BaseModel):
@@ -65,63 +102,80 @@ class User(BaseModel):
 
 class UserDB:
     def __init__(self):
-        # MongoDB collections are already initialized above
         pass
 
     def get_user_by_email(self, email: str) -> Optional[dict]:
-        user = users_collection.find_one({"email": email})
-        if user:
-            user["id"] = str(user["_id"])
-            user.pop("_id", None)
-        return user
-
-    def get_user_by_device_id(self, device_id: str) -> Optional[dict]:
-        user = users_collection.find_one({"device_id": device_id})
-        if user:
-            user["id"] = str(user["_id"])
-            user.pop("_id", None)
-        return user
-
-    def get_user_by_id(self, user_id: str) -> Optional[dict]:
-        from bson import ObjectId
-        try:
-            print(f"[UserDB] Getting user by ID: {user_id}")
-            user = users_collection.find_one({"_id": ObjectId(user_id)})
+        if USE_MONGO:
+            user = users_collection.find_one({"email": email})
             if user:
-                print(f"[UserDB] Found user: {user.get('email')}")
                 user["id"] = str(user["_id"])
                 user.pop("_id", None)
-                return user
-            else:
-                print(f"[UserDB] User not found")
+            return user
+        for u in _mem_users:
+            if u.get("email") == email:
+                return dict(u)
+        return None
+
+    def get_user_by_device_id(self, device_id: str) -> Optional[dict]:
+        if USE_MONGO:
+            user = users_collection.find_one({"device_id": device_id})
+            if user:
+                user["id"] = str(user["_id"])
+                user.pop("_id", None)
+            return user
+        for u in _mem_users:
+            if u.get("device_id") == device_id:
+                return dict(u)
+        return None
+
+    def get_user_by_id(self, user_id: str) -> Optional[dict]:
+        if USE_MONGO:
+            from bson import ObjectId
+            try:
+                user = users_collection.find_one({"_id": ObjectId(user_id)})
+                if user:
+                    user["id"] = str(user["_id"])
+                    user.pop("_id", None)
+                    return user
                 return None
-        except Exception as e:
-            print(f"[UserDB] Error: {e}")
-            return None
+            except Exception as e:
+                print(f"[UserDB] Error: {e}")
+                return None
+        for u in _mem_users:
+            if u.get("id") == user_id:
+                return dict(u)
+        return None
 
     def create_user(self, user_data: dict) -> dict:
-        print(f"[UserDB] Creating user: {user_data.get('email')}")
-        result = users_collection.insert_one(user_data)
-        user_data["id"] = str(result.inserted_id)
-        print(f"[UserDB] User created with ID: {result.inserted_id}")
+        if USE_MONGO:
+            result = users_collection.insert_one(user_data)
+            user_data["id"] = str(result.inserted_id)
+            return user_data
+        user_data["id"] = _gen_id()
+        _mem_users.append(dict(user_data))
+        _persist()
         return user_data
 
     def update_user(self, user_id: str, update_data: dict) -> Optional[dict]:
-        from bson import ObjectId
-        try:
-            print(f"[UserDB] Updating user: {user_id}")
-            print(f"[UserDB] Update data keys: {list(update_data.keys())}")
-            result = users_collection.update_one(
-                {"_id": ObjectId(user_id)},
-                {"$set": update_data}
-            )
-            print(f"[UserDB] Update result - Modified: {result.modified_count}")
-            if result.modified_count > 0:
-                return self.get_user_by_id(user_id)
-            return None
-        except Exception as e:
-            print(f"[UserDB] Error updating user: {e}")
-            return None
+        if USE_MONGO:
+            from bson import ObjectId
+            try:
+                result = users_collection.update_one(
+                    {"_id": ObjectId(user_id)},
+                    {"$set": update_data}
+                )
+                if result.modified_count > 0:
+                    return self.get_user_by_id(user_id)
+                return None
+            except Exception as e:
+                print(f"[UserDB] Error updating user: {e}")
+                return None
+        for u in _mem_users:
+            if u.get("id") == user_id:
+                u.update(update_data)
+                _persist()
+                return dict(u)
+        return None
 
 
 class SettingsDB:
@@ -129,69 +183,62 @@ class SettingsDB:
         pass
 
     def get_user_settings(self, user_id: str) -> Optional[dict]:
-        """Get settings for a specific user"""
-        from bson import ObjectId
-        try:
-            print(f"[SettingsDB] Getting settings for user_id: {user_id}")
-            settings = settings_collection.find_one({"user_id": ObjectId(user_id)})
-            if settings:
-                print(f"[SettingsDB] Found settings: {settings}")
-                settings.pop("_id", None)
-                settings.pop("user_id", None)
-                return settings
-            else:
-                print(f"[SettingsDB] No settings found for user")
+        if USE_MONGO:
+            from bson import ObjectId
+            try:
+                settings = settings_collection.find_one({"user_id": ObjectId(user_id)})
+                if settings:
+                    settings.pop("_id", None)
+                    settings.pop("user_id", None)
+                    return settings
                 return None
-        except Exception as e:
-            print(f"[SettingsDB] Error getting settings: {e}")
-            return None
+            except Exception as e:
+                print(f"[SettingsDB] Error getting settings: {e}")
+                return None
+        settings = _mem_settings.get(user_id)
+        if settings:
+            return dict(settings)
+        return None
 
     def save_user_settings(self, user_id: str, settings_data: dict) -> dict:
-        """Save or update settings for a specific user"""
-        from bson import ObjectId
-        try:
-            print(f"[SettingsDB] Saving settings for user_id: {user_id}")
-            print(f"[SettingsDB] Settings data: {settings_data}")
-            
-            result = settings_collection.update_one(
-                {"user_id": ObjectId(user_id)},
-                {"$set": {
-                    "break_interval": settings_data["break_interval"],
-                    "break_duration": settings_data["break_duration"],
-                    "auto_start": settings_data["auto_start"]
-                }},
-                upsert=True
-            )
-            
-            print(f"[SettingsDB] Upsert result - Modified: {result.modified_count}, Upserted: {result.upserted_id}")
-            
-            # Verify the save
-            saved = settings_collection.find_one({"user_id": ObjectId(user_id)})
-            if saved:
-                print(f"[SettingsDB] Verified save: {saved}")
-            
-            return settings_data
-        except Exception as e:
-            print(f"[SettingsDB] Error saving settings: {e}")
-            import traceback
-            traceback.print_exc()
-            raise
+        if USE_MONGO:
+            from bson import ObjectId
+            try:
+                settings_collection.update_one(
+                    {"user_id": ObjectId(user_id)},
+                    {"$set": {
+                        "break_interval": settings_data["break_interval"],
+                        "break_duration": settings_data["break_duration"],
+                        "auto_start": settings_data["auto_start"]
+                    }},
+                    upsert=True
+                )
+                return settings_data
+            except Exception as e:
+                print(f"[SettingsDB] Error saving settings: {e}")
+                import traceback
+                traceback.print_exc()
+                raise
+        _mem_settings[user_id] = {
+            "break_interval": settings_data["break_interval"],
+            "break_duration": settings_data["break_duration"],
+            "auto_start": settings_data["auto_start"]
+        }
+        _persist()
+        return settings_data
 
 
-# Initialize database instances
 db = UserDB()
 settings_db = SettingsDB()
+
 
 class ChatHistoryDB:
     def __init__(self):
         pass
 
     def create_session(self, user_id: str, first_message: str, first_response: str, model: str, provider_key: str = None) -> dict:
-        """Create a new chat session with first message"""
-        from bson import ObjectId
-        from datetime import datetime
-        
-        try:
+        if USE_MONGO:
+            from bson import ObjectId
             session_doc = {
                 "user_id": ObjectId(user_id),
                 "messages": [
@@ -206,25 +253,34 @@ class ChatHistoryDB:
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
-            
             result = chat_history_collection.insert_one(session_doc)
             session_doc["id"] = str(result.inserted_id)
             session_doc.pop("_id", None)
             session_doc.pop("user_id", None)
-            
-            print(f"[ChatHistory] Created new session for user {user_id}")
             return session_doc
-        except Exception as e:
-            print(f"[ChatHistory] Error creating session: {e}")
-            raise
+        session = {
+            "id": _gen_id(),
+            "user_id": user_id,
+            "messages": [
+                {
+                    "message": first_message,
+                    "response": first_response,
+                    "model": model,
+                    "provider_key": provider_key,
+                    "timestamp": datetime.utcnow()
+                }
+            ],
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        _mem_chat_history.append(session)
+        _persist()
+        return {k: v for k, v in session.items() if k != "user_id"}
 
     def add_message_to_session(self, user_id: str, session_id: str, message: str, response: str, model: str, provider_key: str = None) -> dict:
-        """Add a message to existing session"""
-        from bson import ObjectId
-        from datetime import datetime
-        
-        try:
-            result = chat_history_collection.update_one(
+        if USE_MONGO:
+            from bson import ObjectId
+            chat_history_collection.update_one(
                 {"_id": ObjectId(session_id), "user_id": ObjectId(user_id)},
                 {
                     "$push": {
@@ -239,29 +295,32 @@ class ChatHistoryDB:
                     "$set": {"updated_at": datetime.utcnow()}
                 }
             )
-            
-            print(f"[ChatHistory] Added message to session {session_id}")
             return {"success": True}
-        except Exception as e:
-            print(f"[ChatHistory] Error adding message: {e}")
-            raise
+        for s in _mem_chat_history:
+            if s["id"] == session_id and s["user_id"] == user_id:
+                s["messages"].append({
+                    "message": message,
+                    "response": response,
+                    "model": model,
+                    "provider_key": provider_key,
+                    "timestamp": datetime.utcnow()
+                })
+                s["updated_at"] = datetime.utcnow()
+                _persist()
+                return {"success": True}
+        return {"success": False}
 
     def get_user_sessions(self, user_id: str, limit: int = 20) -> list:
-        """Get all chat sessions for a user"""
-        from bson import ObjectId
-        
-        try:
-            print(f"[ChatHistory] Getting sessions for user {user_id}")
-            
+        if USE_MONGO:
+            from bson import ObjectId
             sessions = list(
                 chat_history_collection.find({"user_id": ObjectId(user_id)})
                 .sort("updated_at", -1)
                 .limit(limit)
             )
-            
-            formatted_sessions = []
+            formatted = []
             for session in sessions:
-                formatted_sessions.append({
+                formatted.append({
                     "id": str(session["_id"]),
                     "message_count": len(session.get("messages", [])),
                     "first_message": session["messages"][0]["message"] if session.get("messages") else "",
@@ -270,25 +329,30 @@ class ChatHistoryDB:
                     "created_at": session["created_at"].isoformat(),
                     "updated_at": session["updated_at"].isoformat()
                 })
-            
-            print(f"[ChatHistory] Found {len(formatted_sessions)} sessions")
-            return formatted_sessions
-        except Exception as e:
-            print(f"[ChatHistory] Error getting sessions: {e}")
-            return []
+            return formatted
+        user_sessions = [s for s in _mem_chat_history if s["user_id"] == user_id]
+        user_sessions.sort(key=lambda x: str(x["updated_at"]), reverse=True)
+        formatted = []
+        for session in user_sessions[:limit]:
+            formatted.append({
+                "id": session["id"],
+                "message_count": len(session.get("messages", [])),
+                "first_message": session["messages"][0]["message"] if session.get("messages") else "",
+                "last_message": session["messages"][-1]["message"] if session.get("messages") else "",
+                "models_used": list(set(msg.get("model", "unknown") for msg in session.get("messages", []))),
+                "created_at": session["created_at"].isoformat() if hasattr(session["created_at"], "isoformat") else str(session["created_at"]),
+                "updated_at": session["updated_at"].isoformat() if hasattr(session["updated_at"], "isoformat") else str(session["updated_at"])
+            })
+        return formatted
 
     def get_session_messages(self, user_id: str, session_id: str) -> Optional[dict]:
-        """Get all messages in a specific session"""
-        from bson import ObjectId
-        
-        try:
+        if USE_MONGO:
+            from bson import ObjectId
             session = chat_history_collection.find_one({
                 "_id": ObjectId(session_id),
                 "user_id": ObjectId(user_id)
             })
-            
             if session:
-                # Convert messages timestamp to ISO format
                 formatted_messages = []
                 for msg in session.get("messages", []):
                     formatted_messages.append({
@@ -298,7 +362,6 @@ class ChatHistoryDB:
                         "provider_key": msg.get("provider_key"),
                         "timestamp": msg["timestamp"].isoformat() if isinstance(msg["timestamp"], datetime) else msg["timestamp"]
                     })
-                
                 return {
                     "id": str(session["_id"]),
                     "messages": formatted_messages,
@@ -306,46 +369,58 @@ class ChatHistoryDB:
                     "updated_at": session["updated_at"].isoformat()
                 }
             return None
-        except Exception as e:
-            print(f"[ChatHistory] Error getting session: {e}")
-            return None
+        for s in _mem_chat_history:
+            if s["id"] == session_id and s["user_id"] == user_id:
+                formatted_messages = []
+                for msg in s.get("messages", []):
+                    formatted_messages.append({
+                        "message": msg["message"],
+                        "response": msg["response"],
+                        "model": msg.get("model", "unknown"),
+                        "provider_key": msg.get("provider_key"),
+                        "timestamp": msg["timestamp"].isoformat() if isinstance(msg["timestamp"], datetime) else msg["timestamp"]
+                    })
+                return {
+                    "id": s["id"],
+                    "messages": formatted_messages,
+                    "created_at": s["created_at"].isoformat() if hasattr(s["created_at"], "isoformat") else str(s["created_at"]),
+                    "updated_at": s["updated_at"].isoformat() if hasattr(s["updated_at"], "isoformat") else str(s["updated_at"])
+                }
+        return None
 
     def delete_session(self, user_id: str, session_id: str) -> bool:
-        """Delete a specific chat session"""
-        from bson import ObjectId
-        
-        try:
+        if USE_MONGO:
+            from bson import ObjectId
             result = chat_history_collection.delete_one({
                 "_id": ObjectId(session_id),
                 "user_id": ObjectId(user_id)
             })
-            
-            print(f"[ChatHistory] Deleted session {session_id}")
             return result.deleted_count > 0
-        except Exception as e:
-            print(f"[ChatHistory] Error deleting session: {e}")
-            return False
+        for i, s in enumerate(_mem_chat_history):
+            if s["id"] == session_id and s["user_id"] == user_id:
+                _mem_chat_history.pop(i)
+                _persist()
+                return True
+        return False
 
     def clear_user_history(self, user_id: str) -> int:
-        """Clear all chat history for a user"""
-        from bson import ObjectId
-        
-        try:
+        if USE_MONGO:
+            from bson import ObjectId
             result = chat_history_collection.delete_many({"user_id": ObjectId(user_id)})
-            print(f"[ChatHistory] Cleared {result.deleted_count} sessions for user {user_id}")
             return result.deleted_count
-        except Exception as e:
-            print(f"[ChatHistory] Error clearing history: {e}")
-            return 0
+        before = len(_mem_chat_history)
+        _mem_chat_history[:] = [s for s in _mem_chat_history if s["user_id"] != user_id]
+        _persist()
+        return before - len(_mem_chat_history)
 
 
 chat_history_db = ChatHistoryDB()
 
+
 class ActivityDB:
     def save_session(self, user_id: str, session_data: dict) -> dict:
-        from bson import ObjectId
-        from datetime import datetime
-        try:
+        if USE_MONGO:
+            from bson import ObjectId
             today = datetime.utcnow().strftime("%Y-%m-%d")
             existing = activity_collection.find_one({
                 "user_id": ObjectId(user_id),
@@ -389,14 +464,45 @@ class ActivityDB:
                     "last_updated": datetime.utcnow()
                 })
             return {"status": "ok", "date": today}
-        except Exception as e:
-            print(f"[ActivityDB] Error saving session: {e}")
-            raise
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        for r in _mem_activity:
+            if r["user_id"] == user_id and r["date"] == today:
+                r["sessions"].append({
+                    "session_duration": session_data["session_duration"],
+                    "target_duration": session_data["target_duration"],
+                    "completed": session_data["completed"],
+                    "skipped": session_data.get("skipped", False),
+                    "timestamp": datetime.utcnow()
+                })
+                r["total_session_duration"] += session_data["session_duration"]
+                r["total_breaks_taken"] += 1
+                if session_data.get("skipped"):
+                    r["total_breaks_skipped"] += 1
+                r["last_updated"] = datetime.utcnow()
+                _persist()
+                return {"status": "ok", "date": today}
+        _mem_activity.append({
+            "user_id": user_id,
+            "date": today,
+            "sessions": [{
+                "session_duration": session_data["session_duration"],
+                "target_duration": session_data["target_duration"],
+                "completed": session_data["completed"],
+                "skipped": session_data.get("skipped", False),
+                "timestamp": datetime.utcnow()
+            }],
+            "total_session_duration": session_data["session_duration"],
+            "total_breaks_taken": 1,
+            "total_breaks_skipped": 1 if session_data.get("skipped") else 0,
+            "last_updated": datetime.utcnow()
+        })
+        _persist()
+        return {"status": "ok", "date": today}
 
     def get_user_activity(self, user_id: str, days: int = 7) -> list:
-        from bson import ObjectId
-        from datetime import datetime, timedelta
-        try:
+        if USE_MONGO:
+            from bson import ObjectId
+            from datetime import timedelta
             start_date = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
             records = list(
                 activity_collection.find({
@@ -414,13 +520,24 @@ class ActivityDB:
                     "sessions_count": len(r.get("sessions", []))
                 })
             return formatted
-        except Exception as e:
-            print(f"[ActivityDB] Error getting activity: {e}")
-            return []
+        from datetime import timedelta
+        start_date = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+        user_records = [r for r in _mem_activity if r["user_id"] == user_id and r["date"] >= start_date]
+        user_records.sort(key=lambda x: x["date"], reverse=True)
+        formatted = []
+        for r in user_records:
+            formatted.append({
+                "date": r["date"],
+                "total_session_duration": r.get("total_session_duration", 0),
+                "total_breaks_taken": r.get("total_breaks_taken", 0),
+                "total_breaks_skipped": r.get("total_breaks_skipped", 0),
+                "sessions_count": len(r.get("sessions", []))
+            })
+        return formatted
 
     def get_user_activity_by_date(self, user_id: str, date: str) -> Optional[dict]:
-        from bson import ObjectId
-        try:
+        if USE_MONGO:
+            from bson import ObjectId
             record = activity_collection.find_one({
                 "user_id": ObjectId(user_id),
                 "date": date
@@ -431,8 +548,12 @@ class ActivityDB:
                 record.pop("user_id", None)
                 return record
             return None
-        except Exception as e:
-            print(f"[ActivityDB] Error getting activity by date: {e}")
-            return None
+        for r in _mem_activity:
+            if r["user_id"] == user_id and r["date"] == date:
+                copy = dict(r)
+                copy.pop("user_id", None)
+                return copy
+        return None
+
 
 activity_db = ActivityDB()

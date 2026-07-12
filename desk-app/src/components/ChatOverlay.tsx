@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useSelector, useDispatch } from 'react-redux'
 import type { RootState, AppDispatch } from '../store'
 import { fetchSessions, fetchSessionMessages, deleteSession, clearAllHistory } from '../store/chatSlice'
@@ -10,17 +11,16 @@ const API_URL = import.meta.env.VITE_API_URL
 interface ChatOverlayProps {
   isOpen: boolean
   onClose: () => void
+  onPlayMusic?: (mood: string) => void
 }
 
-function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
+function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
   const dispatch = useDispatch<AppDispatch>()
   const { token } = useSelector((state: RootState) => state.auth)
   const { sessions, isLoading } = useSelector((state: RootState) => state.chat)
   const user = useSelector((state: RootState) => state.auth.user)
   
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; recommendations?: any[]; tools_used?: string[] }>>([
-    { role: 'assistant', content: '👋 Hi! I\'m your Wellness Agent. How can I help you today?' }
-  ])
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; recommendations?: any[]; tools_used?: string[] }>>([])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [selectedModelKey, setSelectedModelKey] = useState<string>('')
@@ -43,6 +43,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const processedAutoRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     if (isOpen && token) {
@@ -59,6 +60,40 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!window.electronAPI) return
+    for (const msg of messages) {
+      if (!msg.recommendations) continue
+      for (const rec of msg.recommendations) {
+        if (processedAutoRef.current.has(rec.id)) continue
+        if (rec.action_type === 'auto_execute' && rec.execute_params) {
+          processedAutoRef.current.add(rec.id)
+          ;(async () => {
+            try {
+              switch (rec.type) {
+                case 'brightness':
+                  await window.electronAPI.setSystemBrightness(rec.execute_params.target_brightness)
+                  break
+                case 'volume':
+                  await window.electronAPI.setSystemVolume(rec.execute_params.target_volume)
+                  break
+                case 'night_mode':
+                  await window.electronAPI.setNightMode(rec.execute_params.enabled, rec.execute_params.intensity)
+                  break
+              }
+            } catch (e) {
+              console.error('Auto-execute failed:', e)
+            }
+          })()
+        }
+        if (rec.action_type === 'auto_play_music') {
+          processedAutoRef.current.add(rec.id)
+          onPlayMusic?.(rec.mood)
+        }
+      }
+    }
+  }, [messages, onPlayMusic])
 
   const loadSessionMessages = async (sessionId: string) => {
     if (!token) return
@@ -86,7 +121,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
         try {
           await dispatch(deleteSession({ token, sessionId })).unwrap()
           if (activeSessionId === sessionId) {
-            setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your Wellness Agent. How can I help you today?' }])
+            setMessages([])
             setActiveSessionId(null)
           }
           setConfirmDialog(prev => ({ ...prev, isOpen: false }))
@@ -108,7 +143,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
       onConfirm: async () => {
         try {
           await dispatch(clearAllHistory(token)).unwrap()
-          setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your Wellness Agent. How can I help you today?' }])
+          setMessages([])
           setActiveSessionId(null)
           setConfirmDialog(prev => ({ ...prev, isOpen: false }))
         } catch (error) {
@@ -212,7 +247,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
   }
 
   const startNewChat = () => {
-    setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your Wellness Agent. How can I help you today?' }])
+    setMessages([])
     setActiveSessionId(null)
   }
 
@@ -255,12 +290,24 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
     return groups
   }, [filteredSessions])
 
-  if (!isOpen) return null
-
   return (
-    <>
-      <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 opacity-100 animate-in fade-in zoom-in-95">
-        <div className="w-full max-w-[1100px] h-[90vh] max-h-[800px] border border-white/10 rounded-[32px] shadow-2xl flex overflow-hidden">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="chat-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.92, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.92, opacity: 0, y: 20 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-[1100px] h-[90vh] max-h-[800px] border border-white/10 rounded-[32px] shadow-2xl flex overflow-hidden"
+          >
           {/* Sidebar - History */}
           <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-[width] duration-200 border-r border-white/5 flex flex-col overflow-hidden shrink-0`}>
             <div className="flex items-center justify-between px-5 py-5 border-b border-white/5">
@@ -405,7 +452,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar">
-              {messages.length === 1 && messages[0].role === 'assistant' && messages[0].content.startsWith('👋') ? (
+              {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-8">
                   <div className="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-5">
                     <span className="text-3xl">💬</span>
@@ -416,12 +463,12 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
                   </p>
                   <div className="flex flex-wrap justify-center gap-2 max-w-md">
                     {[
-                      'Check my current settings',
+                      'Check my current settings if they are good for less burnout',
                       'I\'m feeling tired',
                       'Suggest a break activity',
                       'How\'s my activity today?',
                       'Reduce my eye strain',
-                      'I need a wellness tip',
+                      'Play some calming music',
                     ].map((prompt) => (
                       <button
                         key={prompt}
@@ -436,7 +483,13 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
               ) : (
                 <div className="space-y-4">
                   {messages.map((msg, idx) => (
-                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} ${idx > 0 ? 'motion-safe:animate-[fadeIn_0.2s_ease-out]' : ''}`}>
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: idx === messages.length - 1 ? 0.05 : 0, ease: 'easeOut' }}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
                       <div className={`max-w-[80%] px-6 py-4 rounded-2xl text-base leading-relaxed text-left whitespace-pre-wrap ${msg.role === 'user' ? 'bg-accent/15 border border-accent/25 text-white rounded-br-md' : 'bg-white/[0.04] border border-white/[0.06] text-green-200/80 rounded-bl-md'}`}>
                         {msg.content}
 
@@ -449,7 +502,8 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
                                 {tool === 'get_user_activity' && '📊 Activity fetched'}
                                 {tool === 'get_user_break_settings' && '⏰ Schedule fetched'}
                                 {tool === 'get_break_tip' && '💡 Tip generated'}
-                                {!['check_system_settings', 'get_user_activity', 'get_user_break_settings', 'get_break_tip'].includes(tool) && `🔧 ${tool}`}
+                                {tool === 'recommend_music' && '🎵 Music recommended'}
+                                {!['check_system_settings', 'get_user_activity', 'get_user_break_settings', 'get_break_tip', 'recommend_music'].includes(tool) && `🔧 ${tool}`}
                               </span>
                             ))}
                           </div>
@@ -458,100 +512,205 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
                         {/* Render executable recommendations */}
                         {msg.recommendations && msg.recommendations.length > 0 && (
                           <div className="mt-4 space-y-3">
-                            <div className="text-xs font-semibold text-white/60 uppercase tracking-wide">Recommended Actions:</div>
-                            {msg.recommendations.filter((rec: any) => rec.action_type === 'execute').map((rec: any) => (
-                              <div key={rec.id} className="p-4 rounded-xl bg-white/5 border border-white/10 transition-all">
-                                <div className="flex items-start gap-3 mb-3">
-                                  <span className="text-2xl">
-                                    {rec.type === 'brightness' ? '☀️' : rec.type === 'volume' ? '🔊' : rec.type === 'night_mode' ? '🌙' : '⏸️'}
-                                  </span>
-                                  <div className="flex-1">
-                                    <div className="text-sm font-semibold text-white/90">{rec.title}</div>
-                                    <div className="text-xs text-white/60 mt-1">{rec.message}</div>
+                            {msg.recommendations.filter((rec: any) => rec.action_type === 'auto_execute').length > 0 && (
+                              <>
+                                <div className="text-xs font-semibold text-white/60 uppercase tracking-wide">Applied Settings:</div>
+                                {msg.recommendations.filter((rec: any) => rec.action_type === 'auto_execute').map((rec: any) => (
+                                  <div key={rec.id} className="p-4 rounded-xl bg-green-500/5 border border-green-500/15 transition-all">
+                                    <div className="flex items-start gap-3">
+                                      <span className="text-2xl">
+                                        {rec.type === 'brightness' ? '☀️' : rec.type === 'volume' ? '🔊' : rec.type === 'night_mode' ? '🌙' : '⏸️'}
+                                      </span>
+                                      <div className="flex-1">
+                                        <div className="text-sm font-semibold text-white/90">{rec.title}</div>
+                                        <div className="text-xs text-white/60 mt-1">{rec.message}</div>
+                                        <div className="flex items-center gap-1.5 mt-2 text-green-400 text-xs font-medium">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                                          Applied
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                                {rec.execute_params && (
-                                  <div className="flex gap-2 mt-3">
-                                    <button
-                                      className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 cursor-pointer transition-all"
-                                      onClick={async (e) => {
-                                        const btn = e.currentTarget
-                                        try {
-                                          if (window.electronAPI) {
-                                            let result = { success: false }
-                                            switch (rec.type) {
-                                              case 'brightness':
-                                                result = await window.electronAPI.setSystemBrightness(rec.execute_params.target_brightness)
-                                                break
-                                              case 'volume':
-                                                result = await window.electronAPI.setSystemVolume(rec.execute_params.target_volume)
-                                                break
-                                              case 'night_mode':
-                                                result = await window.electronAPI.setNightMode(rec.execute_params.enabled, rec.execute_params.intensity)
-                                                break
-                                            }
-                                            if (result.success) {
-                                              btn.innerHTML = '✅ Applied!'
-                                              btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-green-500/20 border border-green-500/30 text-green-400 cursor-default'
-                                              // Disable reject button
-                                              const parent = btn.parentElement
-                                              if (parent) {
-                                                const rejectBtn = parent.querySelector('button:last-child') as HTMLButtonElement
-                                                if (rejectBtn) {
-                                                  rejectBtn.disabled = true
-                                                  rejectBtn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                                ))}
+                              </>
+                            )}
+
+                            {msg.recommendations.filter((rec: any) => rec.action_type === 'execute').length > 0 && (
+                              <>
+                                <div className="text-xs font-semibold text-white/60 uppercase tracking-wide">Recommended Actions:</div>
+                                {msg.recommendations.filter((rec: any) => rec.action_type === 'execute').map((rec: any) => (
+                                  <div key={rec.id} className="p-4 rounded-xl bg-white/5 border border-white/10 transition-all">
+                                    <div className="flex items-start gap-3 mb-3">
+                                      <span className="text-2xl">
+                                        {rec.type === 'brightness' ? '☀️' : rec.type === 'volume' ? '🔊' : rec.type === 'night_mode' ? '🌙' : '⏸️'}
+                                      </span>
+                                      <div className="flex-1">
+                                        <div className="text-sm font-semibold text-white/90">{rec.title}</div>
+                                        <div className="text-xs text-white/60 mt-1">{rec.message}</div>
+                                      </div>
+                                    </div>
+                                    {rec.execute_params && (
+                                      <div className="flex gap-2 mt-3">
+                                        <button
+                                          className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 cursor-pointer transition-all"
+                                          onClick={async (e) => {
+                                            const btn = e.currentTarget
+                                            try {
+                                              if (window.electronAPI) {
+                                                let result = { success: false }
+                                                switch (rec.type) {
+                                                  case 'brightness':
+                                                    result = await window.electronAPI.setSystemBrightness(rec.execute_params.target_brightness)
+                                                    break
+                                                  case 'volume':
+                                                    result = await window.electronAPI.setSystemVolume(rec.execute_params.target_volume)
+                                                    break
+                                                  case 'night_mode':
+                                                    result = await window.electronAPI.setNightMode(rec.execute_params.enabled, rec.execute_params.intensity)
+                                                    break
+                                                }
+                                                if (result.success) {
+                                                  btn.innerHTML = 'Applied!'
+                                                  btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-green-500/20 border border-green-500/30 text-green-400 cursor-default'
+                                                  const parent = btn.parentElement
+                                                  if (parent) {
+                                                    const rejectBtn = parent.querySelector('button:last-child') as HTMLButtonElement
+                                                    if (rejectBtn) {
+                                                      rejectBtn.disabled = true
+                                                      rejectBtn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                                                    }
+                                                  }
                                                 }
                                               }
+                                            } catch (error) {
+                                              console.error('Failed to execute:', error)
+                                              btn.innerHTML = 'Failed'
+                                              setTimeout(() => { btn.innerHTML = 'Execute' }, 2000)
                                             }
-                                          }
-                                        } catch (error) {
-                                          console.error('Failed to execute:', error)
-                                          btn.innerHTML = '❌ Failed'
-                                          setTimeout(() => { btn.innerHTML = '✨ Execute' }, 2000)
-                                        }
-                                      }}
-                                    >
-                                      ✨ Execute
-                                    </button>
-                                    <button
-                                      className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/10 border border-white/20 text-white/70 hover:bg-white/15 cursor-pointer transition-all"
-                                      onClick={(e) => {
-                                        const btn = e.currentTarget
-                                        btn.innerHTML = '🗑️ Dismissed'
-                                        btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/40 cursor-default'
-                                        // Disable execute button
-                                        const parent = btn.parentElement
-                                        if (parent) {
-                                          const execBtn = parent.querySelector('button:first-child') as HTMLButtonElement
-                                          if (execBtn) {
-                                            execBtn.disabled = true
-                                            execBtn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
-                                          }
-                                        }
-                                      }}
-                                    >
-                                      Reject
-                                    </button>
+                                          }}
+                                        >
+                                          Execute
+                                        </button>
+                                        <button
+                                          className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/10 border border-white/20 text-white/70 hover:bg-white/15 cursor-pointer transition-all"
+                                          onClick={(e) => {
+                                            const btn = e.currentTarget
+                                            btn.innerHTML = 'Dismissed'
+                                            btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/40 cursor-default'
+                                            const parent = btn.parentElement
+                                            if (parent) {
+                                              const execBtn = parent.querySelector('button:first-child') as HTMLButtonElement
+                                              if (execBtn) {
+                                                execBtn.disabled = true
+                                                execBtn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                                              }
+                                            }
+                                          }}
+                                        >
+                                          Reject
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
+                                ))}
+                              </>
+                            )}
+
+                            {msg.recommendations.filter((rec: any) => rec.action_type === 'auto_play_music').map((rec: any) => (
+                              <div key={rec.id} className="p-4 rounded-xl bg-green-500/5 border border-green-500/15 transition-all">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0">
+                                    <span className="text-xl">🎵</span>
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="text-sm font-semibold text-white/90">{rec.title}</div>
+                                    <div className="text-xs text-white/50 mt-1">{rec.message}</div>
+                                    <div className="flex items-center gap-1.5 mt-2 text-green-400 text-xs font-medium">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                                      Playing now...
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+
+                            {msg.recommendations.filter((rec: any) => rec.action_type === 'play_music').map((rec: any) => (
+                              <div key={rec.id} className="p-4 rounded-xl bg-accent/5 border border-accent/15 transition-all">
+                                <div className="flex items-start gap-3 mb-3">
+                                  <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+                                    <span className="text-xl">🎵</span>
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="text-sm font-semibold text-white/90">{rec.title}</div>
+                                    <div className="text-xs text-white/50 mt-1">{rec.message}</div>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2 mt-3">
+                                  <button
+                                    className="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 cursor-pointer transition-all flex items-center justify-center gap-2"
+                                    onClick={(e) => {
+                                      const btn = e.currentTarget
+                                      btn.innerHTML = 'Playing...'
+                                      btn.className = 'flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-green-500/20 border border-green-500/30 text-green-400 cursor-default flex items-center justify-center gap-2'
+                                      const parent = btn.parentElement
+                                      if (parent) {
+                                        const dismissBtn = parent.querySelector('button:last-child') as HTMLButtonElement
+                                        if (dismissBtn && dismissBtn !== btn) {
+                                          dismissBtn.disabled = true
+                                          dismissBtn.className = 'flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                                        }
+                                      }
+                                      onPlayMusic?.(rec.mood)
+                                    }}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                    Play Music
+                                  </button>
+                                  <button
+                                    className="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/10 border border-white/20 text-white/70 hover:bg-white/15 cursor-pointer transition-all"
+                                    onClick={(e) => {
+                                      const btn = e.currentTarget
+                                      btn.innerHTML = 'Dismissed'
+                                      btn.className = 'flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 text-white/40 cursor-default'
+                                      const parent = btn.parentElement
+                                      if (parent) {
+                                        const playBtn = parent.querySelector('button:first-child') as HTMLButtonElement
+                                        if (playBtn && playBtn !== btn) {
+                                          playBtn.disabled = true
+                                          playBtn.className = 'flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    Not now
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="bg-white/[0.04] border border-white/[0.06] px-5 py-3.5 rounded-2xl rounded-bl-md">
-                        <div className="flex gap-1.5">
-                          <div className="w-2 h-2 bg-accent/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                          <div className="w-2 h-2 bg-accent/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="w-2 h-2 bg-accent/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  <AnimatePresence>
+                    {isTyping && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex justify-start"
+                      >
+                        <div className="bg-white/[0.04] border border-white/[0.06] px-5 py-3.5 rounded-2xl rounded-bl-md">
+                          <div className="flex gap-1.5">
+                            <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} className="w-2 h-2 bg-accent/40 rounded-full" />
+                            <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.15 }} className="w-2 h-2 bg-accent/40 rounded-full" />
+                            <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }} className="w-2 h-2 bg-accent/40 rounded-full" />
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -588,8 +747,9 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
+      )}
 
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
@@ -601,7 +761,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
       />
-    </>
+    </AnimatePresence>
   )
 }
 

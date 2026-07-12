@@ -2,14 +2,46 @@ from langchain_core.tools import tool
 from typing import Optional
 from datetime import datetime
 
+MOOD_MUSIC_MAP = {
+    "stressed": {"emoji": "\U0001f630", "label": "Stressed", "description": "Rain sounds to calm your mind"},
+    "anxious": {"emoji": "\U0001f61f", "label": "Anxious", "description": "Soft piano for peace"},
+    "tired": {"emoji": "\U0001f634", "label": "Tired", "description": "Nature sounds to recharge"},
+    "sad": {"emoji": "\U0001f614", "label": "Sad", "description": "Gentle melodies to comfort"},
+    "focus": {"emoji": "\U0001f3af", "label": "Need Focus", "description": "Lo-fi beats for concentration"},
+    "happy": {"emoji": "\U0001f60a", "label": "Happy", "description": "Uplifting acoustic vibes"},
+    "sleep": {"emoji": "\U0001f319", "label": "Sleep", "description": "Deep calm for restful sleep"},
+    "meditate": {"emoji": "\U0001f9d8", "label": "Meditate", "description": "Zen peace for mindfulness"},
+}
+
+MOOD_SYNONYMS = {
+    "delightful": "happy", "cheerful": "happy", "upbeat": "happy", "good": "happy",
+    "great": "happy", "excited": "happy", "joyful": "happy", "pleased": "happy",
+    "overwhelmed": "stressed", "tense": "stressed", "frustrated": "stressed",
+    "pressured": "stressed", "burned out": "stressed", "burnout": "stressed",
+    "worried": "anxious", "nervous": "anxious", "panicked": "anxious", "scared": "anxious",
+    "exhausted": "tired", "sleepy": "tired", "drained": "tired", "worn out": "tired",
+    "fatigued": "tired", "sleepy": "tired",
+    "down": "sad", "depressed": "sad", "lonely": "sad", "unhappy": "sad", "blue": "sad",
+    "concentrate": "focus", "productive": "focus", "work": "focus", "study": "focus",
+    "working": "focus", "studying": "focus", "coding": "focus",
+    "rest": "sleep", "bed": "sleep", "drowsy": "sleep", "insomnia": "sleep",
+    "calm": "meditate", "peaceful": "meditate", "zen": "meditate", "mindful": "meditate",
+    "relax": "meditate", "relaxing": "meditate",
+}
+
 
 @tool
 def check_system_settings(
     brightness: Optional[int] = None,
     volume: Optional[int] = None,
     is_night_mode_enabled: Optional[bool] = None,
+    auto_apply: bool = False,
 ) -> dict:
-    """Check if the user's current system settings (brightness, volume, night mode) are optimal for their health. Call this whenever a user asks about their settings, wellness, burnout prevention, or when they mention brightness/volume/night mode. Returns recommendations for any settings that need adjustment."""
+    """Check if the user's current system settings (brightness, volume, night mode) are optimal for their health. Call this whenever a user asks about their settings, wellness, burnout prevention, or when they mention brightness/volume/night mode. Returns recommendations for any settings that need adjustment.
+
+    Set auto_apply=True when the user explicitly asks to FIX, OPTIMIZE, APPLY, or UPDATE settings (e.g. "fix my settings", "optimize my brightness", "apply the recommended settings", "update everything"). In this case, apply the changes immediately.
+
+    Set auto_apply=False when the user asks to CHECK, VIEW, or SEE settings (e.g. "check my settings", "what's my brightness", "show me my settings"). In this case, show the recommendations with Execute/Reject buttons for the user to confirm."""
     hour = datetime.utcnow().hour
     recommendations = []
     status = {}
@@ -114,6 +146,7 @@ def check_system_settings(
         "recommendations": recommendations,
         "status": status,
         "current_hour": hour,
+        "auto_apply": auto_apply,
     }
 
 
@@ -178,8 +211,12 @@ def get_user_break_settings(user_id: str) -> dict:
 
 
 @tool
-def get_break_tip(focus_area: Optional[str] = None) -> dict:
-    """Get a wellness break tip. Call this when the user asks for a break suggestion, wellness tip, or wants to know what to do during a break. Returns a specific actionable activity with instructions."""
+def get_break_tip(focus_area: Optional[str] = None, auto_apply: bool = False) -> dict:
+    """Get a wellness break tip. Call this when the user asks for a break suggestion, wellness tip, or wants to know what to do during a break. Returns a specific actionable activity with instructions.
+
+    Set auto_apply=True when the user explicitly asks to SET UP, CONFIGURE, or START breaks (e.g. "set up breaks for me", "configure my breaks", "start taking breaks"). In this case, return the tip with auto_apply=true so break settings can be configured.
+
+    Set auto_apply=False when the user asks for a tip, suggestion, or recommendation (e.g. "give me a break tip", "what should I do during a break", "suggest something"). In this case, just show the tip."""
     tips = {
         "eyes": [
             {"tip": "20-20-20 Rule", "duration": "20 seconds", "instruction": "Look at something 20 feet away for 20 seconds. This reduces eye strain by giving your focusing muscles a break."},
@@ -213,7 +250,7 @@ def get_break_tip(focus_area: Optional[str] = None) -> dict:
 
     if focus_area and focus_area in tips:
         tip = random.choice(tips[focus_area])
-        return {"category": focus_area, **tip}
+        return {"category": focus_area, "auto_apply": auto_apply, **tip}
 
     all_tips = []
     for cat_tips in tips.values():
@@ -223,4 +260,36 @@ def get_break_tip(focus_area: Optional[str] = None) -> dict:
     tip = random.choice(all_tips)
     category = random.choice(categories)
 
-    return {"category": category, **tip}
+    return {"category": category, "auto_apply": auto_apply, **tip}
+
+
+@tool
+def recommend_music(mood: str, auto_play: bool = False) -> dict:
+    """Recommend calming music based on the user's current mood or emotional state. Call this when the user mentions how they're feeling (stressed, anxious, tired, sad, etc.), asks for music, or when you think music could help them relax. The mood parameter must be one of: stressed, anxious, tired, sad, focus, happy, sleep, meditate. You can also pass common synonyms like "delightful", "exhausted", "worried" etc. and they will be mapped automatically.
+
+    Set auto_play=True when the user explicitly asks to PLAY music (e.g. "play some happy music", "put on focus music", "play rain sounds"). In this case, start playing immediately without asking.
+
+    Set auto_play=False when the user asks to FIND, SEARCH, SUGGEST, or BROWSE music (e.g. "can you find some focus music", "what music do you recommend", "show me options"). In this case, present the recommendation with a play button for the user to confirm."""
+    mood_lower = mood.lower().strip()
+    if mood_lower not in MOOD_MUSIC_MAP:
+        mood_lower = MOOD_SYNONYMS.get(mood_lower, mood_lower)
+    if mood_lower not in MOOD_MUSIC_MAP:
+        valid = ", ".join(MOOD_MUSIC_MAP.keys())
+        return {
+            "success": False,
+            "message": f"Unknown mood '{mood}'. Valid moods: {valid}",
+        }
+    info = MOOD_MUSIC_MAP[mood_lower]
+    if auto_play:
+        message = f"Playing {info['label'].lower()} music for you — {info['description'].lower()}."
+    else:
+        message = f"I found some {info['label'].lower()} music for you — {info['description'].lower()}. Would you like me to play it?"
+    return {
+        "success": True,
+        "mood": mood_lower,
+        "emoji": info["emoji"],
+        "label": info["label"],
+        "description": info["description"],
+        "auto_play": auto_play,
+        "message": message,
+    }

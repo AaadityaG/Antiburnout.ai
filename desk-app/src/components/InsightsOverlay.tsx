@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchActivityHistory } from '../store/activitySlice'
 import type { RootState, AppDispatch } from '../store'
@@ -12,15 +13,11 @@ function InsightsOverlay({ isOpen, onClose }: InsightsOverlayProps) {
   const dispatch = useDispatch<AppDispatch>()
   const { token } = useSelector((state: RootState) => state.auth)
   const { history, isLoading } = useSelector((state: RootState) => state.activity)
-  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     console.log('[Insights] isOpen:', isOpen, 'token:', !!token, 'history length:', history.length)
     if (isOpen && token) {
       dispatch(fetchActivityHistory({ token, days: 7 }))
-      setVisible(true)
-    } else {
-      setVisible(false)
     }
   }, [isOpen, token, dispatch])
 
@@ -84,11 +81,24 @@ function InsightsOverlay({ isOpen, onClose }: InsightsOverlayProps) {
     return 'border-rose-400/20 bg-rose-500/10'
   }
 
-  if (!visible) return null
-
   return (
-    <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="w-full max-w-[750px] border border-white/10 rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="insights-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25 }}
+        className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4"
+      >
+        <motion.div
+          initial={{ scale: 0.92, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.92, opacity: 0, y: 20 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-[750px] border border-white/10 rounded-[32px] shadow-2xl overflow-hidden"
+        >
         {/* Header */}
         <div className="px-8 pt-8 pb-6 flex items-center justify-between border-b border-white/5">
           <div className="flex items-center gap-4">
@@ -291,8 +301,10 @@ function InsightsOverlay({ isOpen, onClose }: InsightsOverlayProps) {
             Close
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+      </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

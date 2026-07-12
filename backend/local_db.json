@@ -1,0 +1,259 @@
+{
+  "users": [
+    {
+      "id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "device_id": "2772664d8ba4248759dae1bdee97195f",
+      "device_name": "Win32",
+      "created_at": "2026-07-12T10:11:39.780275",
+      "last_login": "2026-07-12T10:18:26.191468",
+      "ai_providers": {
+        "model_1": {
+          "provider": "openrouter",
+          "model": "openai/gpt-4o-mini",
+          "api_key": "gAAAAABqU2ot50fONqNuS4wXCfLo28S86VBTFoR_O_CUQJsoagLcejAzSstRiblfcl9qpgxi4Bx_k4NJBZak3wGwnXgtYd2JBT78Zy9bWEXayauo-fNhaG-w6llAXwVivb3mxrbSqPmWotRHvyk63_Ojah4Q-ASLRJ0-t0o0uFiATEl4ZcXDg60="
+        },
+        "model_2": {
+          "provider": "openrouter",
+          "model": "anthropic/claude-3-haiku",
+          "api_key": "gAAAAABqU2otxpJLwhxbmBZZK2i_h4-EguChZUpvvpfKpxG3YBZy9NZHHo3wxoYinITrrqqM6EEOhM_h11b_CcR03LkNHLHy8RC-9v48KXM14JjsaoCINEuSjepT7K1araRFTP-p2ytpyfssNcIpSbrK1aQEKhoyDRRnYt3AQsSBYnlZKRaFgaQ="
+        },
+        "model_3": {
+          "provider": "openrouter",
+          "model": "meta-llama/llama-3.1-70b-instruct",
+          "api_key": "gAAAAABqU2otg8WLx0nXZvv49lW0o9Fb1WjXGcQcDiMQWsMqg6KshuHNgBM4QQU5FHtKGHGSC9XHfNyG3lxsmnLRAbBTsKiSU-tuPSe3A983yQEfRmHOghumD03bc8NWZ1lKg-i_VWhQtUWL5gDZ8oV7SBHCVtxRuN1F-YDsTXzk1cGHEtS_wII="
+        }
+      },
+      "profile_completed": true,
+      "name": "Aditya"
+    }
+  ],
+  "settings": {
+    "97d95d5c-daf6-4371-bea7-2ccbf4524d5f": {
+      "break_interval": 60,
+      "break_duration": 299,
+      "auto_start": true
+    }
+  },
+  "chat_history": [
+    {
+      "id": "a5888df3-483f-494d-bbcf-2632680fc274",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "How's my activity today?",
+          "response": "Today, you've had a productive day with 15 sessions totaling about 148,654 minutes of focus time! You've also taken all 15 breaks you scheduled, but skipped 9 breaks. Your break compliance is at 100%. Keep up the great work, and remember to take breaks to recharge!",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-12 11:56:46.959033"
+        }
+      ],
+      "created_at": "2026-07-12 11:56:46.959051",
+      "updated_at": "2026-07-12 11:56:46.959058"
+    },
+    {
+      "id": "5369e6e1-a771-49ea-9d19-234ed8fd9f3b",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "hi",
+          "response": "Hello! How can I assist you today in preventing digital burnout and maintaining your wellness?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-12 11:58:09.769343"
+        }
+      ],
+      "created_at": "2026-07-12 11:58:09.769358",
+      "updated_at": "2026-07-12 11:58:09.769364"
+    },
+    {
+      "id": "2bbc03f4-bb8d-48e8-9f95-a83321792c33",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "I'm feeling tired",
+          "response": "Playing tired music for you \u2014 nature sounds to recharge. Enjoy your break! \ud83c\udf3f\ud83d\ude34",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-12 11:58:39.731085"
+        }
+      ],
+      "created_at": "2026-07-12 11:58:39.731104",
+      "updated_at": "2026-07-12 11:58:39.731111"
+    },
+    {
+      "id": "3d426a30-14a2-4bb2-89cd-4f027f3a7ada",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "I'm feeling tired",
+          "response": "It's understandable to feel tired, especially after long hours on screens. Taking breaks can really help recharge your energy. I suggest stepping away from your screen for a few minutes, stretching, or getting some fresh air. \n\nWould you like a specific break tip to follow?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-12 12:00:14.392466"
+        },
+        {
+          "message": "is there any music you can suggest",
+          "response": "I found some calming nature sounds to help recharge you while you're feeling tired. Would you like me to play it?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-12 12:02:08.195551"
+        }
+      ],
+      "created_at": "2026-07-12 12:00:14.392469",
+      "updated_at": "2026-07-12 12:02:08.195575"
+    },
+    {
+      "id": "bb4a3420-f2c5-4eca-b59a-232997d4036b",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "Check my current settings if they are good for less burnout",
+          "response": "Your current settings could be optimized to help prevent burnout:\n\n1. **Brightness**: Currently at 100%. It's recommended to decrease it to **75%** to reduce eye strain.\n2. **Volume**: Currently at 100%. It\u2019s advisable to lower it to **60%**, which is within the safe limit for extended listening.\n\nWould you like to apply these adjustments?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-12 12:32:46.919173"
+        },
+        {
+          "message": "you do it",
+          "response": "I've applied the optimal settings for you! Your brightness is now at 75%, and the volume is set to 60%, both of which are ideal for reducing burnout. \n\nIf you need further assistance or tips, just let me know!",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-12 12:33:14.249203"
+        }
+      ],
+      "created_at": "2026-07-12 12:32:46.919182",
+      "updated_at": "2026-07-12 12:33:14.249220"
+    }
+  ],
+  "activity": [
+    {
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "date": "2026-07-12",
+      "sessions": [
+        {
+          "session_duration": 30,
+          "target_duration": 30,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-12 10:14:48.817978"
+        },
+        {
+          "session_duration": 30,
+          "target_duration": 30,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-12 10:15:21.837091"
+        },
+        {
+          "session_duration": 30,
+          "target_duration": 30,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-12 10:16:08.876600"
+        },
+        {
+          "session_duration": 27,
+          "target_duration": 30,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 10:17:07.129002"
+        },
+        {
+          "session_duration": 30,
+          "target_duration": 30,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-12 10:18:08.356566"
+        },
+        {
+          "session_duration": 23,
+          "target_duration": 30,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 10:19:20.367615"
+        },
+        {
+          "session_duration": 20,
+          "target_duration": 30,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 10:20:11.425809"
+        },
+        {
+          "session_duration": 20,
+          "target_duration": 30,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 10:21:01.911634"
+        },
+        {
+          "session_duration": 1783852449,
+          "target_duration": 30,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 10:34:09.237449"
+        },
+        {
+          "session_duration": 1783855135,
+          "target_duration": 2730,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 11:18:55.437354"
+        },
+        {
+          "session_duration": 1783855854,
+          "target_duration": 2730,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 11:30:54.730366"
+        },
+        {
+          "session_duration": 147,
+          "target_duration": 2730,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-12 11:46:44.733355"
+        },
+        {
+          "session_duration": 1783856804,
+          "target_duration": 2730,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 11:46:44.736636"
+        },
+        {
+          "session_duration": 4,
+          "target_duration": 2730,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-12 11:46:48.641541"
+        },
+        {
+          "session_duration": 1783856812,
+          "target_duration": 2730,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 11:46:52.126826"
+        },
+        {
+          "session_duration": 1783857955,
+          "target_duration": 2730,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-12 12:05:55.323786"
+        },
+        {
+          "session_duration": 60,
+          "target_duration": 60,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-12 12:31:14.261667"
+        }
+      ],
+      "total_session_duration": 10703135430,
+      "total_breaks_taken": 17,
+      "total_breaks_skipped": 10,
+      "last_updated": "2026-07-12 12:31:14.261671"
+    }
+  ]
+}

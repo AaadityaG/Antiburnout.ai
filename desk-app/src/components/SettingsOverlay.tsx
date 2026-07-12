@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { fromTotalSeconds, toTotalSeconds } from '../store/settingsSlice'
 import { useToast } from '../context/ToastContext'
 
@@ -70,11 +71,24 @@ function SettingsOverlay({ isOpen, onClose, initialInterval, initialDuration, en
     return parts.length > 0 ? parts.join(' ') : '0s'
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 opacity-100 animate-in fade-in zoom-in-95">
-      <div className="w-full max-w-[600px] border border-white/10 rounded-[32px] shadow-2xl">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="settings-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25 }}
+        className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4"
+      >
+        <motion.div
+          initial={{ scale: 0.92, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.92, opacity: 0, y: 20 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-[600px] border border-white/10 rounded-[32px] shadow-2xl"
+        >
         <div className="px-10 pt-8 pb-6 flex items-center justify-between border-b border-white/5">
           <div>
             <h2 className="text-3xl font-extralight text-white tracking-tight">Settings</h2>
@@ -213,8 +227,10 @@ function SettingsOverlay({ isOpen, onClose, initialInterval, initialDuration, en
             Apply
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+      </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

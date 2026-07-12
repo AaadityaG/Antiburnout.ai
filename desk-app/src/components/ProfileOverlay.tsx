@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { login as loginAction, logout as logoutAction, updateAIProviders } from '../store/authSlice'
 import type { RootState, AppDispatch } from '../store'
@@ -175,11 +176,24 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     onClose()
   }, [dispatch, onClose])
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4 transition-all duration-500 opacity-100 animate-in fade-in zoom-in-95">
-      <div className="w-full max-w-[900px] border border-white/10 rounded-[32px] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="profile-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25 }}
+        className="fixed inset-0 bg-glass-heavy glass-blur-heavy z-[9999] flex items-center justify-center p-4"
+      >
+        <motion.div
+          initial={{ scale: 0.92, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.92, opacity: 0, y: 20 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-[900px] border border-white/10 rounded-[32px] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+        >
         
         {/* Header */}
         <header className="px-10 pt-8 pb-6 flex justify-between items-center border-b border-white/5">
@@ -332,7 +346,7 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             {isSavingProfile ? 'Saving...' : 'Save Profile'}
           </button>
         </footer>
-      </div>
+      </motion.div>
 
       <ConfirmDialog
         isOpen={showLogoutDialog}
@@ -358,7 +372,9 @@ function ProfileOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           setProviderToDelete('')
         }}
       />
-    </div>
+      </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

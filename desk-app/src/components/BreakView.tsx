@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useSelector } from 'react-redux'
 import type { RootState } from '../store'
 
@@ -85,20 +86,25 @@ function BreakView({ isActive, timeLeft, isPaused, onPause, onResume, onEnd, ena
     }))
   }, [])
 
-  if (!isActive) return null
-
   const totalDuration = currentTip?.duration ? parseInt(currentTip.duration) : 90
   const progress = Math.round((timeLeft / totalDuration) * 100)
   const circumference = 2 * Math.PI * 240
   const tipAccent = currentTip ? getCategoryAccent(currentTip.category) : null
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
-      style={{
-        background: 'radial-gradient(ellipse at 50% 30%, #0a2820 0%, #081a14 35%, #06120e 60%, #040d0a 100%)',
-      }}
-    >
+    <AnimatePresence>
+      {isActive && (
+        <motion.div
+          key="break-view"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
+          style={{
+            background: 'radial-gradient(ellipse at 50% 30%, #0a2820 0%, #081a14 35%, #06120e 60%, #040d0a 100%)',
+          }}
+        >
       {/* CSS Animations */}
       <style>{`
         @keyframes breakBreathe {
@@ -177,7 +183,7 @@ function BreakView({ isActive, timeLeft, isPaused, onPause, onResume, onEnd, ena
       />
 
       {/* Top section — greeting */}
-      <div className="break-fade-in mb-6 flex flex-col items-center">
+      <div className="break-fade-in mb-10 flex flex-col items-center">
         <div className="flex items-center gap-3 px-6 py-3 rounded-full border border-white/8"
           style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(20px)' }}>
           <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-emerald-400'}`}
@@ -194,11 +200,11 @@ function BreakView({ isActive, timeLeft, isPaused, onPause, onResume, onEnd, ena
       </div>
 
       {/* Main Timer — Grand & Centered */}
-      <div className="relative flex items-center justify-center break-fade-in">
+      <div className="relative flex items-center justify-center break-fade-in -mt-16">
 
 
         {/* Timer text */}
-        <div className="break-breathe relative z-10 flex flex-col items-center">
+        <div className="break-breathe relative z-10 mt-16 flex flex-col items-center">
           <h1
             className="font-mono font-extralight leading-none tracking-tighter"
             style={{
@@ -376,7 +382,9 @@ function BreakView({ isActive, timeLeft, isPaused, onPause, onResume, onEnd, ena
           I'm Refreshed
         </button>
       </div>
-    </div>
+    </motion.div>
+    )}
+    </AnimatePresence>
   )
 }
 

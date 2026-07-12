@@ -65,6 +65,8 @@ async def send_message(token: str, request: ChatRequest):
         device_id = user.get("device_id", "")
         api_key = decrypt_api_key(provider_config["api_key"], device_id)
 
+        print(f"[Chat] Provider: {provider_key}, Model: {provider_config['model']}, Key starts: {api_key[:12]}...")
+
         system_metrics = {}
         if request.brightness is not None:
             system_metrics["brightness"] = request.brightness
@@ -118,6 +120,7 @@ async def send_message(token: str, request: ChatRequest):
                     if isinstance(content, str):
                         content = json.loads(content)
                     if isinstance(content, dict) and content.get("has_recommendations"):
+                        is_auto = content.get("auto_apply", False)
                         for rec in content.get("recommendations", []):
                             recommendations.append({
                                 "id": f"{rec['type']}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
@@ -125,11 +128,34 @@ async def send_message(token: str, request: ChatRequest):
                                 "title": f"{'Reduce' if rec['action'] == 'decrease' else 'Increase' if rec['action'] == 'increase' else rec['action'].title()} {rec['type'].replace('_', ' ').title()}",
                                 "message": rec["reason"],
                                 "priority": rec["priority"],
-                                "action_type": "execute",
+                                "action_type": "auto_execute" if is_auto else "execute",
                                 "execute_endpoint": f"agent/execute/{rec['type']}",
                                 "execute_params": rec["execute_params"],
                                 "created_at": datetime.utcnow().isoformat(),
                             })
+                    if isinstance(content, dict) and content.get("success") and content.get("mood"):
+                        is_auto = content.get("auto_play", False)
+                        recommendations.append({
+                            "id": f"music_{content['mood']}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                            "type": "music",
+                            "title": f"{content['emoji']} Play {content['label']} Music",
+                            "message": content["message"],
+                            "priority": 3,
+                            "action_type": "auto_play_music" if is_auto else "play_music",
+                            "mood": content["mood"],
+                            "created_at": datetime.utcnow().isoformat(),
+                        })
+                    if isinstance(content, dict) and content.get("tip") and content.get("auto_apply"):
+                        recommendations.append({
+                            "id": f"break_{content.get('category', 'general')}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                            "type": "break_tip",
+                            "title": f"Configure Break: {content['tip']}",
+                            "message": content.get("instruction", ""),
+                            "priority": 3,
+                            "action_type": "auto_configure_breaks",
+                            "tip": content,
+                            "created_at": datetime.utcnow().isoformat(),
+                        })
                 except Exception:
                     pass
 
