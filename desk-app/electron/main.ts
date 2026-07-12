@@ -420,14 +420,27 @@ ipcMain.handle('set-system-brightness', async (event, brightness: number) => {
     if (process.platform === 'win32') {
       console.log('Setting brightness to:', brightness)
       
-      // Use WMI to set brightness
-      execSync(
-        `powershell -command "(Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightnessMethods).WmiSetBrightness(0, ${brightness})"`,
-        { encoding: 'utf8', timeout: 5000 }
-      )
-      
-      console.log('Brightness set successfully')
-      return { success: true, brightness }
+      try {
+        execSync(
+          `powershell -command "$b = ${brightness}; $m = Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightnessMethods -ErrorAction Stop; $m.WmiSetBrightness(0, $b)"`,
+          { encoding: 'utf8', timeout: 5000 }
+        )
+        console.log('Brightness set via WMI')
+        return { success: true, brightness }
+      } catch (wmiError) {
+        console.log('WMI brightness not available, trying PowerShell display brightness...')
+      }
+
+      try {
+        execSync(
+          `powershell -command "Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class Display{[DllImport(\"dxva2.dll\", SetLastError=true)]public static extern bool SetMonitorBrightness(IntPtr hMonitor,uint dwBrightness);[DllImport(\"dxva2.dll\")]public static extern IntPtr GetMonitorFromWindow(IntPtr hWnd,uint dwFlags);}' -ErrorAction Stop"`,
+          { encoding: 'utf8', timeout: 5000 }
+        )
+      } catch {
+        console.log('No brightness control available on this system')
+      }
+
+      return { success: false, error: 'Brightness control not supported on this display' }
     }
     return { success: false, error: 'Not supported on this platform' }
   } catch (error) {
