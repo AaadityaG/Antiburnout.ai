@@ -18,8 +18,8 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
   const { sessions, isLoading } = useSelector((state: RootState) => state.chat)
   const user = useSelector((state: RootState) => state.auth.user)
   
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; recommendations?: any[] }>>([
-    { role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; recommendations?: any[]; tools_used?: string[] }>>([
+    { role: 'assistant', content: '👋 Hi! I\'m your Wellness Agent. How can I help you today?' }
   ])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -86,7 +86,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
         try {
           await dispatch(deleteSession({ token, sessionId })).unwrap()
           if (activeSessionId === sessionId) {
-            setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
+            setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your Wellness Agent. How can I help you today?' }])
             setActiveSessionId(null)
           }
           setConfirmDialog(prev => ({ ...prev, isOpen: false }))
@@ -108,7 +108,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
       onConfirm: async () => {
         try {
           await dispatch(clearAllHistory(token)).unwrap()
-          setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
+          setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your Wellness Agent. How can I help you today?' }])
           setActiveSessionId(null)
           setConfirmDialog(prev => ({ ...prev, isOpen: false }))
         } catch (error) {
@@ -128,19 +128,23 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
 
   const currentModel = selectedModelKey ? availableModels[selectedModelKey]?.model : 'AI'
 
-  const handleSend = async () => {
-    if (!input.trim() || !token) return
+  const handleSend = async (overrideMessage?: string) => {
+    const msgToSend = overrideMessage || input.trim()
+    if (!msgToSend || !token) return
 
-    const userMessage = input.trim()
+    const userMessage = msgToSend
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setInput('')
     setIsTyping(true)
 
     try {
-      const conversationHistory = messages.slice(-10).map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }))
+      const conversationHistory = messages
+        .filter(msg => !msg.content.startsWith('👋'))
+        .slice(-10)
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }))
 
       // Get real system metrics from Electron
       let brightness: number | null = null
@@ -187,7 +191,8 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: response.data.response,
-        recommendations: response.data.recommendations || []
+        recommendations: response.data.recommendations || [],
+        tools_used: response.data.tools_used || []
       }])
 
       if (response.data.session_id && !activeSessionId) {
@@ -207,7 +212,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
   }
 
   const startNewChat = () => {
-    setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your AntiBurnout assistant. How can I help you today?' }])
+    setMessages([{ role: 'assistant', content: '👋 Hi! I\'m your Wellness Agent. How can I help you today?' }])
     setActiveSessionId(null)
   }
 
@@ -329,8 +334,8 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
                                   <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                                 </svg>
                               </button>
-                            </div>
-                          </div>
+            </div>
+          </div>
                         </button>
                       ))}
                     </div>
@@ -359,7 +364,7 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
                   <span className="text-base">🤖</span>
                 </div>
                 <div className="min-w-0 flex items-start flex-col">
-                  <h2 className="text-lg font-medium text-white truncate">Assistant</h2>
+                  <h2 className="text-lg font-medium text-white truncate">Wellness Agent</h2>
                   <p className="text-xs text-green-200/40 truncate">{currentModel}</p>
                 </div>
               </div>
@@ -406,16 +411,49 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
                     <span className="text-3xl">💬</span>
                   </div>
                   <h3 className="text-xl font-light text-white/80 mb-2">Start a conversation</h3>
-                  <p className="text-sm text-white/30 max-w-xs leading-relaxed">
+                  <p className="text-sm text-white/30 max-w-xs leading-relaxed mb-6">
                     Ask me anything about your break patterns, productivity tips, or just have a chat.
                   </p>
+                  <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                    {[
+                      'Check my current settings',
+                      'I\'m feeling tired',
+                      'Suggest a break activity',
+                      'How\'s my activity today?',
+                      'Reduce my eye strain',
+                      'I need a wellness tip',
+                    ].map((prompt) => (
+                      <button
+                        key={prompt}
+                        onClick={() => handleSend(prompt)}
+                        className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white/50 hover:text-white/80 hover:bg-white/10 hover:border-white/20 cursor-pointer transition-all"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} ${idx > 0 ? 'motion-safe:animate-[fadeIn_0.2s_ease-out]' : ''}`}>
-                      <div className={`max-w-[80%] px-6 py-4 rounded-2xl text-base leading-relaxed ${msg.role === 'user' ? 'bg-accent/15 border border-accent/25 text-white rounded-br-md' : 'bg-white/[0.04] border border-white/[0.06] text-green-200/80 rounded-bl-md'}`}>
+                      <div className={`max-w-[80%] px-6 py-4 rounded-2xl text-base leading-relaxed text-left whitespace-pre-wrap ${msg.role === 'user' ? 'bg-accent/15 border border-accent/25 text-white rounded-br-md' : 'bg-white/[0.04] border border-white/[0.06] text-green-200/80 rounded-bl-md'}`}>
                         {msg.content}
+
+                        {/* Tool usage indicators */}
+                        {msg.tools_used && msg.tools_used.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/[0.06]">
+                            {msg.tools_used.map((tool: string) => (
+                              <span key={tool} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/10 border border-accent/20 text-[11px] text-accent/80 font-medium">
+                                {tool === 'check_system_settings' && '⚙️ Settings checked'}
+                                {tool === 'get_user_activity' && '📊 Activity fetched'}
+                                {tool === 'get_user_break_settings' && '⏰ Schedule fetched'}
+                                {tool === 'get_break_tip' && '💡 Tip generated'}
+                                {!['check_system_settings', 'get_user_activity', 'get_user_break_settings', 'get_break_tip'].includes(tool) && `🔧 ${tool}`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         
                         {/* Render executable recommendations */}
                         {msg.recommendations && msg.recommendations.length > 0 && (
@@ -532,8 +570,17 @@ function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
                   placeholder="Type your message..."
                 />
                 <button
+                  className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white/60 flex items-center justify-center hover:bg-white/10 hover:text-white cursor-pointer shrink-0 transition-all"
+                  onClick={startNewChat}
+                  title="New Chat"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </button>
+                <button
                   className="h-12 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium px-6 hover:bg-accent hover:text-primary cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={!input.trim() || isTyping}
                 >
                   Send

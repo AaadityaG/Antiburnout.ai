@@ -11,7 +11,7 @@ import InsightsOverlay from './components/InsightsOverlay'
 import BreakView from './components/BreakView'
 import ChatOverlay from './components/ChatOverlay'
 import MusicOverlay from './components/MusicOverlay'
-import AgentRecommendation from './components/AgentRecommendation'
+
 
 function App() {
   const dispatch = useDispatch<AppDispatch>()
@@ -314,11 +314,6 @@ function App() {
           <button onClick={() => setIsChatOpen(true)} className="w-14 h-14 absolute -right-11/12 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 active:scale-90 transition-all duration-150 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           </button>
-        </div>
-
-        {/* Agent Recommendation */}
-        <div className="mt-8">
-          <AgentRecommendation onChatOpen={() => setIsChatOpen(true)} />
         </div>
 
         

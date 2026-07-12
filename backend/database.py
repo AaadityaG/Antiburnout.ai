@@ -17,8 +17,16 @@ print(f"URI: {MONGODB_URI[:20]}...****")
 print(f"Database: {MONGODB_DB_NAME}")
 
 try:
-    # Initialize MongoDB client
-    client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+    # Initialize MongoDB client with TLS/SSL configuration
+    client = MongoClient(
+        MONGODB_URI,
+        serverSelectionTimeoutMS=10000,
+        connectTimeoutMS=10000,
+        socketTimeoutMS=10000,
+        tls=True,
+        retryWrites=True,
+        w="majority"
+    )
     # Test connection
     client.admin.command('ping')
     db = client[MONGODB_DB_NAME]
