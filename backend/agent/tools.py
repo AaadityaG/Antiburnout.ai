@@ -123,7 +123,7 @@ Set auto_apply=True when the user explicitly asks to FIX, OPTIMIZE, APPLY, or UP
 @tool
 def get_user_activity(user_id: str, days: int = 1) -> dict:
     """Get the user's recent wellness activity history. Call this when the user asks about their progress, activity, how many sessions they've done, or their work/break patterns. Returns session counts, break completion rates, and total focus time."""
-    from database import activity_db
+    from db import activity_db
 
     try:
         records = activity_db.get_user_activity(user_id, days)
@@ -156,7 +156,7 @@ def get_user_activity(user_id: str, days: int = 1) -> dict:
 @tool
 def get_user_break_settings(user_id: str) -> dict:
     """Get the user's configured break preferences (interval, duration, auto-start). Call this when the user asks about or wants to change their break schedule settings."""
-    from database import settings_db
+    from db import settings_db
 
     try:
         settings = settings_db.get_user_settings(user_id)

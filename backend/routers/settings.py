@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from auth import verify_token
-from database import db, settings_db
+from db import db, settings_db
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 

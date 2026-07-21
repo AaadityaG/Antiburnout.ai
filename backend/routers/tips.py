@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from auth import verify_token
-from database import db
-from routers.device_auth import decrypt_api_key
+from db import db
+from services.encryption import decrypt_api_key
 import httpx
 from datetime import datetime
 import random

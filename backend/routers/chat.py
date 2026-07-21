@@ -2,10 +2,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from auth import verify_token
-from database import db, chat_history_db
-from routers.device_auth import decrypt_api_key
+from db import db, chat_history_db
+from services.encryption import decrypt_api_key
+from services.agent_runner import run_agent
 from datetime import datetime
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -75,94 +75,14 @@ async def send_message(token: str, request: ChatRequest):
         if request.local_hour is not None:
             system_metrics["local_hour"] = request.local_hour
 
-        from agent.graph import create_agent_graph, build_system_prompt
-
-        system_prompt = build_system_prompt(user, system_metrics if system_metrics else None)
-
-        initial_messages = [{"role": "system", "content": system_prompt}]
-        for msg in (request.conversation_history or [])[-10:]:
-            initial_messages.append({"role": msg.role, "content": msg.content})
-        initial_messages.append({"role": "user", "content": request.message})
-
-        graph = create_agent_graph(
+        ai_response, recommendations, tools_used = await run_agent(
             api_key=api_key,
             model=provider_config["model"],
             user=user,
-            system_metrics=system_metrics if system_metrics else None,
+            system_metrics=system_metrics,
+            message=request.message,
+            conversation_history=request.conversation_history,
         )
-
-        print(f"[Chat] Running agent for user {user_id} with model {provider_config['model']}")
-
-        final_state = await graph.ainvoke(
-            {"messages": initial_messages},
-            config={"recursion_limit": 10},
-        )
-
-        print(f"[Chat] Agent completed, processed {len(final_state['messages'])} messages")
-
-        ai_response = ""
-        recommendations = []
-        tools_used = []
-
-        for msg in final_state["messages"]:
-            if isinstance(msg, AIMessage):
-                if msg.content:
-                    ai_response = msg.content
-                if msg.tool_calls:
-                    for tc in msg.tool_calls:
-                        tool_name = tc.get("name", "")
-                        if tool_name and tool_name not in tools_used:
-                            tools_used.append(tool_name)
-            if isinstance(msg, ToolMessage):
-                try:
-                    import json
-                    content = msg.content
-                    if isinstance(content, str):
-                        content = json.loads(content)
-                    if isinstance(content, dict) and content.get("has_recommendations"):
-                        is_auto = content.get("auto_apply", False)
-                        for rec in content.get("recommendations", []):
-                            recommendations.append({
-                                "id": f"{rec['type']}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
-                                "type": rec["type"],
-                                "title": f"{'Reduce' if rec['action'] == 'decrease' else 'Increase' if rec['action'] == 'increase' else rec['action'].title()} {rec['type'].replace('_', ' ').title()}",
-                                "message": rec["reason"],
-                                "priority": rec["priority"],
-                                "action_type": "auto_execute" if is_auto else "execute",
-                                "execute_endpoint": f"agent/execute/{rec['type']}",
-                                "execute_params": rec["execute_params"],
-                                "created_at": datetime.utcnow().isoformat(),
-                            })
-                    if isinstance(content, dict) and content.get("success") and content.get("mood"):
-                        is_auto = content.get("auto_play", False)
-                        recommendations.append({
-                            "id": f"music_{content['mood']}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
-                            "type": "music",
-                            "title": f"{content['emoji']} Play {content['label']} Music",
-                            "message": content["message"],
-                            "priority": 3,
-                            "action_type": "auto_play_music" if is_auto else "play_music",
-                            "mood": content["mood"],
-                            "created_at": datetime.utcnow().isoformat(),
-                        })
-                    if isinstance(content, dict) and content.get("tip") and content.get("auto_apply"):
-                        recommendations.append({
-                            "id": f"break_{content.get('category', 'general')}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
-                            "type": "break_tip",
-                            "title": f"Configure Break: {content['tip']}",
-                            "message": content.get("instruction", ""),
-                            "priority": 3,
-                            "action_type": "auto_configure_breaks",
-                            "tip": content,
-                            "created_at": datetime.utcnow().isoformat(),
-                        })
-                except Exception:
-                    pass
-
-        if not ai_response:
-            ai_response = "I'm here to help you stay well! What's on your mind?"
-
-        print(f"[Chat] Tools used: {tools_used}, recommendations: {len(recommendations)}")
 
         session_id = ""
         try:
