@@ -43,3 +43,6 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# RAG vector store
+rag/chroma_db/

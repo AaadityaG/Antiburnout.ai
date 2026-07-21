@@ -32,6 +32,21 @@ class ClearHistoryResponse(BaseModel):
     deleted_count: int
     message: str
 
+class SearchRequest(BaseModel):
+    query: str
+    k: Optional[int] = 5
+
+class SearchResult(BaseModel):
+    content: str
+    session_id: str
+    timestamp: str
+    score: Optional[float] = None
+
+class SearchResponse(BaseModel):
+    query: str
+    results: List[SearchResult]
+    count: int
+
 @router.get("/", response_model=List[ChatSessionResponse])
 async def get_chat_history(token: str, limit: int = 20):
     """Get chat session list for authenticated user"""
@@ -51,6 +66,46 @@ async def get_chat_history(token: str, limit: int = 20):
         print(f"Error in get_chat_history: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to get chat history: {str(e)}")
+
+@router.post("/search", response_model=SearchResponse)
+async def search_chat_history(token: str, request: SearchRequest):
+    """Search chat history using semantic similarity"""
+    try:
+        payload = verify_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        user_id = payload.get("sub")
+
+        from rag.vector_store import get_user_collection
+        collection = get_user_collection(user_id)
+
+        results = collection.similarity_search_with_relevance_scores(
+            query=request.query,
+            k=request.k or 2,
+        )
+
+        formatted = []
+        for doc, score in results:
+            formatted.append({
+                "content": doc.page_content,
+                "session_id": doc.metadata.get("session_id", ""),
+                "timestamp": doc.metadata.get("timestamp", ""),
+                "score": round(score, 4),
+            })
+
+        return SearchResponse(
+            query=request.query,
+            results=formatted,
+            count=len(formatted),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error in search_chat_history: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to search chat history: {str(e)}")
 
 @router.get("/{session_id}", response_model=SessionDetailResponse)
 async def get_session_messages(token: str, session_id: str):

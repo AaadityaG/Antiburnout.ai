@@ -34,6 +34,15 @@ interface ChatState {
   currentSessionId: string | null
   isLoading: boolean
   error: string | null
+  searchResults: SearchResult[]
+  isSearching: boolean
+}
+
+export interface SearchResult {
+  content: string
+  session_id: string
+  timestamp: string
+  score: number
 }
 
 const initialState: ChatState = {
@@ -41,7 +50,9 @@ const initialState: ChatState = {
   currentSession: null,
   currentSessionId: null,
   isLoading: false,
-  error: null
+  error: null,
+  searchResults: [],
+  isSearching: false
 }
 
 // Async thunks
@@ -87,6 +98,19 @@ export const clearAllHistory = createAsyncThunk(
   }
 )
 
+export const searchChatHistory = createAsyncThunk(
+  'chat/searchChatHistory',
+  async ({ token, query, k }: { token: string; query: string; k?: number }) => {
+    const response = await axios.post(`${API_URL}/chat/history/search`, {
+      query,
+      k: k || 5
+    }, {
+      params: { token }
+    })
+    return response.data
+  }
+)
+
 export const chatSlice = createSlice({
   name: 'chat',
   initialState,
@@ -97,6 +121,9 @@ export const chatSlice = createSlice({
     clearCurrentSession: (state) => {
       state.currentSession = null
       state.currentSessionId = null
+    },
+    clearSearchResults: (state) => {
+      state.searchResults = []
     }
   },
   extraReducers: (builder) => {
@@ -142,8 +169,20 @@ export const chatSlice = createSlice({
         state.currentSession = null
         state.currentSessionId = null
       })
+      // Search chat history
+      .addCase(searchChatHistory.pending, (state) => {
+        state.isSearching = true
+      })
+      .addCase(searchChatHistory.fulfilled, (state, action) => {
+        state.isSearching = false
+        state.searchResults = action.payload.results || []
+      })
+      .addCase(searchChatHistory.rejected, (state) => {
+        state.isSearching = false
+        state.searchResults = []
+      })
   }
 })
 
-export const { setCurrentSessionId, clearCurrentSession } = chatSlice.actions
+export const { setCurrentSessionId, clearCurrentSession, clearSearchResults } = chatSlice.actions
 export default chatSlice.reducer
