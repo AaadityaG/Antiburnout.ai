@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from auth import verify_token
-from database import db
+from db import db
 import httpx
 from datetime import datetime
 import math

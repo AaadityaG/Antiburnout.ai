@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from auth import verify_token
-from database import db, chat_history_db
+from db import db, chat_history_db
 
 router = APIRouter(prefix="/chat/history", tags=["Chat History"])
 

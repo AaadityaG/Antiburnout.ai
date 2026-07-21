@@ -5,7 +5,7 @@
       "device_id": "2772664d8ba4248759dae1bdee97195f",
       "device_name": "Win32",
       "created_at": "2026-07-12T10:11:39.780275",
-      "last_login": "2026-07-15T08:35:27.696181",
+      "last_login": "2026-07-21T19:32:21.382503",
       "ai_providers": {
         "model_1": {
           "provider": "openrouter",
@@ -36,78 +36,129 @@
   },
   "chat_history": [
     {
-      "id": "9ce06bfe-09cc-452f-a911-68a76a464c1e",
+      "id": "724006a0-e88d-412b-8470-e14731300e4b",
       "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
       "messages": [
         {
-          "message": "hi whats up man how are you",
-          "response": "I'm here to help you prevent digital burnout and maintain your wellness during long screen sessions! How can I assist you today?",
+          "message": "Play some calming music",
+          "response": "Playing calming music for you now \u2014 enjoy the zen peace and mindfulness! \ud83e\uddd8",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-21 18:26:49.167359"
+          "timestamp": "2026-07-21 19:25:39.193353"
         }
       ],
-      "created_at": "2026-07-21 18:26:49.167368",
-      "updated_at": "2026-07-21 18:26:49.167373"
+      "created_at": "2026-07-21 19:25:39.193375",
+      "updated_at": "2026-07-21 19:25:39.193389"
     },
     {
-      "id": "2acae361-d768-4695-a7a9-5bf1b4d23b10",
+      "id": "40c07ed0-94ae-418d-a180-7533fae99e25",
       "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
       "messages": [
         {
-          "message": "I have 10 minutes suggest me something",
-          "response": "Try doing some shoulder rolls! It takes just 20 seconds. Roll your shoulders forward 5 times and then backward 5 times. This will help release tension from sitting. Enjoy your break!",
+          "message": "Check my current settings if they are good for less burnout",
+          "response": "Your current settings are optimal for reducing burnout. \n\n- **Brightness**: 65% (Optimal)\n- **Volume**: 55% (Optimal)\n\nIf you have any further adjustments or questions, feel free to ask!",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-21 18:31:25.763373"
-        }
-      ],
-      "created_at": "2026-07-21 18:31:25.763379",
-      "updated_at": "2026-07-21 18:31:25.763383"
-    },
-    {
-      "id": "9c69debb-5f96-49cb-b96e-642e758a50c5",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "what is the best way to keep your eyes safe",
-          "response": "To keep your eyes safe during long screen sessions, consider these tips:\n\n1. **Follow the 20-20-20 Rule**: Every 20 minutes, look at something 20 feet away for at least 20 seconds.\n2. **Adjust Screen Brightness**: Ensure your screen brightness matches the surrounding light.\n3. **Use Proper Lighting**: Avoid glare by positioning your screen away from windows and using ambient lighting.\n4. **Blink Regularly**: Remind yourself to blink to keep your eyes moist.\n5. **Take Regular Breaks**: Schedule breaks to rest your eyes and reduce strain.\n\nWould you like me to check your current screen settings or suggest a break tip?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 18:41:18.767770"
+          "timestamp": "2026-07-21 19:26:02.810042"
         },
         {
-          "message": "what can you suggest for brain fog",
-          "response": "To combat brain fog, consider these strategies:\n\n1. **Take Short Breaks**: Step away from your screen for 5-10 minutes every hour to refresh your mind.\n2. **Stay Hydrated**: Drink water throughout the day to maintain hydration levels.\n3. **Get Moving**: Engage in light physical activity or stretching to boost circulation.\n4. **Practice Mindfulness**: Short meditation or breathing exercises can help clear your mind.\n5. **Limit Multitasking**: Focus on one task at a time to improve concentration.\n\nWould you like a specific break tip or to check your break schedule?",
+          "message": "please check it again",
+          "response": "Your current settings are as follows:\n\n- **Brightness**: 82% (Needs adjustment)\n- **Volume**: 55% (Optimal)\n\n**Recommendation**: Decrease brightness to **65%** to reduce eye strain, especially in the evening.\n\nWould you like to apply this adjustment?",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-21 18:41:34.616950"
+          "timestamp": "2026-07-21 19:29:54.269589"
+        },
+        {
+          "message": "you do it",
+          "response": "Applying optimal settings now...\n\n- **Decreasing brightness** to **50%** for better eye comfort.\n\nYour settings will be optimized shortly!",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-21 19:30:05.214233"
+        },
+        {
+          "message": "please check it again",
+          "response": "Your current settings are as follows:\n\n- **Brightness**: 50% (Optimal)\n- **Volume**: 68% (Needs adjustment)\n\n**Recommendation**: Decrease volume to **60%** to help maintain focus during long sessions.\n\nWould you like to apply this adjustment?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-21 19:30:21.090070"
         }
       ],
-      "created_at": "2026-07-21 18:41:18.767796",
-      "updated_at": "2026-07-21 18:41:34.616963"
+      "created_at": "2026-07-21 19:26:02.810063",
+      "updated_at": "2026-07-21 19:30:21.090087"
     },
     {
-      "id": "38863033-c095-4204-b522-2b294f0f034c",
+      "id": "48f25a5d-4b70-4b02-a305-e81125ddf738",
       "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
       "messages": [
         {
-          "message": "my back is hearting bit can you suggest me something good",
-          "response": "It sounds like you're feeling a bit uncomfortable. Taking a break and doing some gentle stretches can help relieve tension in your back. \n\nWould you like me to provide a specific break tip to help you relax and stretch?",
+          "message": "How's my activity today?",
+          "response": "It looks like there hasn't been any activity recorded for today. If you've been working or using your device, it might not have captured the session. Consider taking a break to refresh and reset your focus! Would you like a break tip?",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-21 19:02:08.993673"
-        },
-        {
-          "message": "yes",
-          "response": "Here's a great break tip for you: **Deep Breathing (4-7-8)**.\n\n**Instructions:**\n1. Inhale through your nose for 4 counts.\n2. Hold your breath for 7 counts.\n3. Exhale through your mouth for 8 counts.\n4. Repeat this process 3 times.\n\nThis exercise can help relax your mind and ease tension in your body. Enjoy your break!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 19:02:24.723877"
+          "timestamp": "2026-07-21 19:26:13.419136"
         }
       ],
-      "created_at": "2026-07-21 19:02:08.993697",
-      "updated_at": "2026-07-21 19:02:24.723901"
+      "created_at": "2026-07-21 19:26:13.419157",
+      "updated_at": "2026-07-21 19:26:13.419169"
+    },
+    {
+      "id": "338c4265-97eb-47fd-a487-5845b4921410",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "Reduce my eye strain",
+          "response": "Your current brightness and volume settings are optimal for reducing eye strain. \n\nTo further alleviate eye strain, consider taking regular breaks. Would you like a break tip to help you with that?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-21 19:26:22.583525"
+        }
+      ],
+      "created_at": "2026-07-21 19:26:22.583548",
+      "updated_at": "2026-07-21 19:26:22.583560"
+    },
+    {
+      "id": "0c9520a7-0b5d-4ab2-a1cf-2222ca308f8e",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "Suggest a break activity",
+          "response": "Here's a great break activity for you: **Box Breathing**. \n\n**Duration**: 60 seconds  \n**Instructions**: Inhale for 4 counts, hold for 4 counts, exhale for 4 counts, and hold for 4 counts. Repeat this sequence 4 times.\n\nIt's a calming way to reset your focus! Would you like to set this as a scheduled break activity?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-21 19:27:14.272728"
+        },
+        {
+          "message": "what to do with sudden sadness",
+          "response": "I'm sorry to hear you're feeling sad. It's important to take a moment for yourself. I recommend a break activity like journaling your thoughts or taking a short walk outside. \n\nWould you like me to suggest a calming music playlist to help lift your mood?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-21 19:27:45.109098"
+        },
+        {
+          "message": "sure",
+          "response": "I'm playing some gentle melodies to comfort you. Take a moment to relax and let the music soothe your feelings. \ud83c\udfb6 If you need anything else, just let me know!",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-21 19:27:57.501905"
+        }
+      ],
+      "created_at": "2026-07-21 19:27:14.272748",
+      "updated_at": "2026-07-21 19:27:57.501922"
+    },
+    {
+      "id": "6be9d9a0-c394-4087-9ef7-97895bbc55b4",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "can you suggest me some music for writing",
+          "response": "I found some music for focus \u2014 lo-fi beats that are great for concentration. Would you like me to play it?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-21 19:30:49.866308"
+        }
+      ],
+      "created_at": "2026-07-21 19:30:49.866329",
+      "updated_at": "2026-07-21 19:30:49.866342"
     }
   ],
   "activity": [

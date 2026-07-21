@@ -2,30 +2,13 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict
 from auth import create_access_token
-from database import db, settings_db
+from db import db, settings_db
+from services.encryption import encrypt_api_key, decrypt_api_key
 import uuid
 from datetime import datetime
-from cryptography.fernet import Fernet
-import base64
-import hashlib
 
 router = APIRouter(prefix="/auth", tags=["Device Auth"])
 
-# Encryption utilities
-def get_encryption_key(device_id: str) -> bytes:
-    """Generate encryption key from device ID"""
-    key_hash = hashlib.sha256(device_id.encode()).digest()
-    return base64.urlsafe_b64encode(key_hash)
-
-def encrypt_api_key(api_key: str, device_id: str) -> str:
-    """Encrypt API key using device-specific key"""
-    fernet = Fernet(get_encryption_key(device_id))
-    return fernet.encrypt(api_key.encode()).decode()
-
-def decrypt_api_key(encrypted_key: str, device_id: str) -> str:
-    """Decrypt API key using device-specific key"""
-    fernet = Fernet(get_encryption_key(device_id))
-    return fernet.decrypt(encrypted_key.encode()).decode()
 
 def create_default_settings(user_id: str):
     """Create default settings for a user in MongoDB if they don't exist"""
