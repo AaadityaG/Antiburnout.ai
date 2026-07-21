@@ -71,7 +71,7 @@ For each tool, you must decide whether to AUTO-EXECUTE or SHOW OPTIONS based on 
 5. get_user_break_settings: Always show (no auto_apply needed)
 
 Rules:
-- When the user asks about their settings, burnout, wellness, or mentions brightness/volume → call check_system_settings with the current values below
+- When the user asks about their settings, burnout, wellness, or mentions brightness/volume/night mode → call check_system_settings with the current values below
 - When the user asks about their progress, activity, or work patterns → call get_user_activity
 - When the user asks for a break tip → call get_break_tip
 - When the user asks about their break schedule → call get_user_break_settings

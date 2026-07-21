@@ -36,427 +36,78 @@
   },
   "chat_history": [
     {
-      "id": "a5888df3-483f-494d-bbcf-2632680fc274",
+      "id": "9ce06bfe-09cc-452f-a911-68a76a464c1e",
       "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
       "messages": [
         {
-          "message": "How's my activity today?",
-          "response": "Today, you've had a productive day with 15 sessions totaling about 148,654 minutes of focus time! You've also taken all 15 breaks you scheduled, but skipped 9 breaks. Your break compliance is at 100%. Keep up the great work, and remember to take breaks to recharge!",
+          "message": "hi whats up man how are you",
+          "response": "I'm here to help you prevent digital burnout and maintain your wellness during long screen sessions! How can I assist you today?",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-12 11:56:46.959033"
+          "timestamp": "2026-07-21 18:26:49.167359"
         }
       ],
-      "created_at": "2026-07-12 11:56:46.959051",
-      "updated_at": "2026-07-12 11:56:46.959058"
+      "created_at": "2026-07-21 18:26:49.167368",
+      "updated_at": "2026-07-21 18:26:49.167373"
     },
     {
-      "id": "5369e6e1-a771-49ea-9d19-234ed8fd9f3b",
+      "id": "2acae361-d768-4695-a7a9-5bf1b4d23b10",
       "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
       "messages": [
         {
-          "message": "hi",
-          "response": "Hello! How can I assist you today in preventing digital burnout and maintaining your wellness?",
+          "message": "I have 10 minutes suggest me something",
+          "response": "Try doing some shoulder rolls! It takes just 20 seconds. Roll your shoulders forward 5 times and then backward 5 times. This will help release tension from sitting. Enjoy your break!",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-12 11:58:09.769343"
+          "timestamp": "2026-07-21 18:31:25.763373"
         }
       ],
-      "created_at": "2026-07-12 11:58:09.769358",
-      "updated_at": "2026-07-12 11:58:09.769364"
+      "created_at": "2026-07-21 18:31:25.763379",
+      "updated_at": "2026-07-21 18:31:25.763383"
     },
     {
-      "id": "2bbc03f4-bb8d-48e8-9f95-a83321792c33",
+      "id": "9c69debb-5f96-49cb-b96e-642e758a50c5",
       "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
       "messages": [
         {
-          "message": "I'm feeling tired",
-          "response": "Playing tired music for you \u2014 nature sounds to recharge. Enjoy your break! \ud83c\udf3f\ud83d\ude34",
+          "message": "what is the best way to keep your eyes safe",
+          "response": "To keep your eyes safe during long screen sessions, consider these tips:\n\n1. **Follow the 20-20-20 Rule**: Every 20 minutes, look at something 20 feet away for at least 20 seconds.\n2. **Adjust Screen Brightness**: Ensure your screen brightness matches the surrounding light.\n3. **Use Proper Lighting**: Avoid glare by positioning your screen away from windows and using ambient lighting.\n4. **Blink Regularly**: Remind yourself to blink to keep your eyes moist.\n5. **Take Regular Breaks**: Schedule breaks to rest your eyes and reduce strain.\n\nWould you like me to check your current screen settings or suggest a break tip?",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-12 11:58:39.731085"
-        }
-      ],
-      "created_at": "2026-07-12 11:58:39.731104",
-      "updated_at": "2026-07-12 11:58:39.731111"
-    },
-    {
-      "id": "3d426a30-14a2-4bb2-89cd-4f027f3a7ada",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "I'm feeling tired",
-          "response": "It's understandable to feel tired, especially after long hours on screens. Taking breaks can really help recharge your energy. I suggest stepping away from your screen for a few minutes, stretching, or getting some fresh air. \n\nWould you like a specific break tip to follow?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-12 12:00:14.392466"
+          "timestamp": "2026-07-21 18:41:18.767770"
         },
         {
-          "message": "is there any music you can suggest",
-          "response": "I found some calming nature sounds to help recharge you while you're feeling tired. Would you like me to play it?",
+          "message": "what can you suggest for brain fog",
+          "response": "To combat brain fog, consider these strategies:\n\n1. **Take Short Breaks**: Step away from your screen for 5-10 minutes every hour to refresh your mind.\n2. **Stay Hydrated**: Drink water throughout the day to maintain hydration levels.\n3. **Get Moving**: Engage in light physical activity or stretching to boost circulation.\n4. **Practice Mindfulness**: Short meditation or breathing exercises can help clear your mind.\n5. **Limit Multitasking**: Focus on one task at a time to improve concentration.\n\nWould you like a specific break tip or to check your break schedule?",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-12 12:02:08.195551"
+          "timestamp": "2026-07-21 18:41:34.616950"
         }
       ],
-      "created_at": "2026-07-12 12:00:14.392469",
-      "updated_at": "2026-07-12 12:02:08.195575"
+      "created_at": "2026-07-21 18:41:18.767796",
+      "updated_at": "2026-07-21 18:41:34.616963"
     },
     {
-      "id": "bb4a3420-f2c5-4eca-b59a-232997d4036b",
+      "id": "38863033-c095-4204-b522-2b294f0f034c",
       "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
       "messages": [
         {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings could be optimized to help prevent burnout:\n\n1. **Brightness**: Currently at 100%. It's recommended to decrease it to **75%** to reduce eye strain.\n2. **Volume**: Currently at 100%. It\u2019s advisable to lower it to **60%**, which is within the safe limit for extended listening.\n\nWould you like to apply these adjustments?",
+          "message": "my back is hearting bit can you suggest me something good",
+          "response": "It sounds like you're feeling a bit uncomfortable. Taking a break and doing some gentle stretches can help relieve tension in your back. \n\nWould you like me to provide a specific break tip to help you relax and stretch?",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-12 12:32:46.919173"
+          "timestamp": "2026-07-21 19:02:08.993673"
         },
         {
-          "message": "you do it",
-          "response": "I've applied the optimal settings for you! Your brightness is now at 75%, and the volume is set to 60%, both of which are ideal for reducing burnout. \n\nIf you need further assistance or tips, just let me know!",
+          "message": "yes",
+          "response": "Here's a great break tip for you: **Deep Breathing (4-7-8)**.\n\n**Instructions:**\n1. Inhale through your nose for 4 counts.\n2. Hold your breath for 7 counts.\n3. Exhale through your mouth for 8 counts.\n4. Repeat this process 3 times.\n\nThis exercise can help relax your mind and ease tension in your body. Enjoy your break!",
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
-          "timestamp": "2026-07-12 12:33:14.249203"
-        },
-        {
-          "message": "can you executer them for me",
-          "response": "I've successfully optimized your settings! Your brightness is now set to 75%, the volume is at 60%, and night mode is optimal. These adjustments will help in preventing burnout during your screen time. \n\nIf you need anything else, feel free to ask!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-12 12:35:47.024368"
+          "timestamp": "2026-07-21 19:02:24.723877"
         }
       ],
-      "created_at": "2026-07-12 12:32:46.919182",
-      "updated_at": "2026-07-12 12:35:47.024383"
-    },
-    {
-      "id": "f1243fd1-6d69-4754-92db-1c2a6ed63477",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings could be optimized to help prevent burnout:\n\n1. **Brightness**: Currently at 100%. It's recommended to decrease it to **75%** to reduce eye strain.\n2. **Volume**: Currently at 100%. It's recommended to lower it to **60%**, as 100% exceeds the safe listening limit.\n\nWould you like to apply these recommended adjustments?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-13 06:28:25.831200"
-        },
-        {
-          "message": "you do that for me",
-          "response": "I have applied the optimal settings for you. Your brightness and volume are now adjusted to help reduce burnout. If you have any other wellness needs or questions, feel free to ask!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-13 06:29:05.737816"
-        }
-      ],
-      "created_at": "2026-07-13 06:28:25.831204",
-      "updated_at": "2026-07-13 06:29:05.737828"
-    },
-    {
-      "id": "7e6ee084-d602-4c6a-9e5f-9ea92b51589e",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "hi",
-          "response": "Hello! How can I assist you today in preventing digital burnout and maintaining your wellness?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-15 08:39:33.043619"
-        }
-      ],
-      "created_at": "2026-07-15 08:39:33.043626",
-      "updated_at": "2026-07-15 08:39:33.043629"
-    },
-    {
-      "id": "91561a97-4605-4177-8318-76b02dd5c4c6",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings need adjustments to help prevent burnout:\n\n1. **Brightness**: Current at 100%, recommended to decrease to 75%. High brightness can cause eye strain.\n2. **Volume**: Current at 100%, recommended to decrease to 60%. This exceeds the safe limit for extended listening.\n\nWould you like me to apply these recommended adjustments?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-15 08:40:00.723079"
-        }
-      ],
-      "created_at": "2026-07-15 08:40:00.723096",
-      "updated_at": "2026-07-15 08:40:00.723103"
-    },
-    {
-      "id": "44c58553-1541-49b7-92ff-64729e5e8293",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings could be optimized for better wellness:\n\n1. **Brightness**: Currently at 100%, recommended to decrease to 75% to reduce eye strain.\n2. **Volume**: Currently at 100%, recommended to decrease to 60% to avoid hearing damage over time.\n\n**Night Mode** is optimal. \n\nWould you like to apply these adjustments? (Execute/Reject)",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-15 08:40:57.914311"
-        }
-      ],
-      "created_at": "2026-07-15 08:40:57.914327",
-      "updated_at": "2026-07-15 08:40:57.914334"
-    },
-    {
-      "id": "754ce1a0-6111-4ab5-a169-c561ba7ab9bd",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Play some calming music",
-          "response": "Playing calming music for you now \u2014 enjoy the zen peace for mindfulness! \ud83e\uddd8",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-15 08:41:49.081792"
-        }
-      ],
-      "created_at": "2026-07-15 08:41:49.081803",
-      "updated_at": "2026-07-15 08:41:49.081809"
-    },
-    {
-      "id": "7747d055-8145-4b36-b053-8d4b4a9333c0",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Play some calming music",
-          "response": "Playing calming music for you now \u2014 enjoy some zen peace for mindfulness. \ud83e\uddd8",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-15 08:45:05.325072"
-        },
-        {
-          "message": "I want one for focus",
-          "response": "Playing focus music for you now \u2014 enjoy some lo-fi beats for concentration! \ud83c\udfaf",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-15 08:45:48.303959"
-        }
-      ],
-      "created_at": "2026-07-15 08:45:05.325096",
-      "updated_at": "2026-07-15 08:45:48.303975"
-    },
-    {
-      "id": "02995580-1b56-46c3-b53b-dc2d5b696f5d",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "How's my activity today?",
-          "response": "It looks like there hasn't been any activity recorded for today yet. Make sure to engage with your tasks and take breaks as needed to help prevent burnout. If you need tips on staying active or setting up a break schedule, just let me know!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:09:29.805310"
-        }
-      ],
-      "created_at": "2026-07-21 15:09:29.805312",
-      "updated_at": "2026-07-21 15:09:29.805313"
-    },
-    {
-      "id": "a2920d45-829a-4fb3-9592-0998f92774fe",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings need some adjustments for better wellness:\n\n1. **Brightness**: Increase from 56% to 60% for better comfort during the day.\n2. **Volume**: Decrease from 70% to 60% to reduce strain during long sessions.\n\nWould you like to apply these adjustments?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:32:02.676231"
-        }
-      ],
-      "created_at": "2026-07-21 15:32:02.676245",
-      "updated_at": "2026-07-21 15:32:02.676251"
-    },
-    {
-      "id": "0364d9e2-2a45-42b4-acc5-b69db2b031d0",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings could be optimized to help reduce burnout:\n\n1. **Brightness:** Increase from 56% to 60% (recommended for daytime comfort).\n2. **Volume:** Decrease from 70% to 60% (more suitable for long sessions).\n3. **Night Mode:** Currently optimal.\n\nWould you like to apply these recommendations? If so, I'll make the adjustments for you!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:36:23.009122"
-        }
-      ],
-      "created_at": "2026-07-21 15:36:23.009137",
-      "updated_at": "2026-07-21 15:36:23.009144"
-    },
-    {
-      "id": "222ca75e-b336-4bfc-be60-9adcc938d3fe",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings need some adjustments for better wellness:\n\n1. **Brightness:** Increase from 56% to 60% for more comfort during daytime.\n2. **Volume:** Decrease from 70% to 60% for optimal sound levels during long sessions.\n\nWould you like to apply these recommendations? (Execute/Reject)",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:43:02.459540"
-        }
-      ],
-      "created_at": "2026-07-21 15:43:02.459549",
-      "updated_at": "2026-07-21 15:43:02.459552"
-    },
-    {
-      "id": "6c7a7d2d-4fba-4260-b7a6-1cbf25fe229e",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings have some room for improvement to help reduce burnout:\n\n1. **Brightness**: Increase from 56% to 60% for more comfort during the day.\n2. **Volume**: Decrease from 86% to 60% to align with safe listening levels and protect your hearing.\n\nWould you like to apply these adjustments?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:45:38.595741"
-        }
-      ],
-      "created_at": "2026-07-21 15:45:38.595755",
-      "updated_at": "2026-07-21 15:45:38.595761"
-    },
-    {
-      "id": "2fd8bc29-8d7e-4095-a563-0a9c2ca68022",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Reduce my eye strain",
-          "response": "To help reduce eye strain, I recommend optimizing your screen settings. I will check your brightness, volume, and night mode settings to ensure they are suitable for your health. \n\nExecuting the optimization now...",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:47:35.616131"
-        }
-      ],
-      "created_at": "2026-07-21 15:47:35.616150",
-      "updated_at": "2026-07-21 15:47:35.616158"
-    },
-    {
-      "id": "0cc1670f-7995-438e-a959-1ea940ce0046",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Here are some recommendations for your settings to help reduce burnout:\n\n1. **Brightness**: Decrease from 56% to 50% to reduce eye strain.\n2. **Volume**: Lower from 85% to 60% to stay within the safe listening limit and protect your hearing.\n3. **Night Mode**: Enable night mode at 50% to reduce blue light exposure in the evening.\n\nWould you like to apply these adjustments?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:49:16.332585"
-        },
-        {
-          "message": "you do that for me",
-          "response": "I couldn't apply the changes automatically due to restrictions on system settings. Here are the recommended adjustments for you:\n\n1. **Brightness**: Decrease to **50%** (current: 87%).\n2. **Volume**: Decrease to **60%** (current: 85%).\n3. **Night Mode**: Enable at **50%** (currently disabled).\n\nWould you like to execute these changes now?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:49:37.446516"
-        }
-      ],
-      "created_at": "2026-07-21 15:49:16.332588",
-      "updated_at": "2026-07-21 15:49:37.446530"
-    },
-    {
-      "id": "b76f2117-f10c-424d-8d53-88fde575c954",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Play some calming music",
-          "response": "Playing calming music now \ud83e\uddd8 \u2014 enjoy some zen peace for mindfulness!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:54:33.848167"
-        }
-      ],
-      "created_at": "2026-07-21 15:54:33.848179",
-      "updated_at": "2026-07-21 15:54:33.848184"
-    },
-    {
-      "id": "89ede08f-e01b-43de-b804-4e3a1ca60577",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Here are your current settings and recommendations for reducing burnout:\n\n- **Brightness**: Optimal\n- **Volume**: Needs adjustment. Current: 78%, Recommended: 60% (exceeds safe limit for extended listening).\n- **Night Mode**: Needs adjustment. It's evening (21:00); enabling night mode will reduce blue light exposure.\n\nWould you like to apply these adjustments? (Decrease volume to 60% and enable night mode at 50% intensity)",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:57:31.051240"
-        },
-        {
-          "message": "you do that",
-          "response": "I have applied the optimal settings for you:\n\n- **Brightness**: Optimal\n- **Volume**: Reduced to 60%\n- **Night Mode**: Enabled\n\nThese adjustments will help reduce digital burnout. If you need anything else, just let me know!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 15:57:41.737324"
-        }
-      ],
-      "created_at": "2026-07-21 15:57:31.051261",
-      "updated_at": "2026-07-21 15:57:41.737331"
-    },
-    {
-      "id": "5bcfb42b-8d8b-433a-8f58-e073402b1b04",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Suggest a break activity",
-          "response": "Here's a quick break activity you can try:\n\n**Focus Shift (Duration: 30 seconds)**  \n1. Hold your thumb 10 inches from your face and focus on it for 10 seconds.  \n2. Then, shift your gaze to something across the room for another 10 seconds.  \n3. Repeat this process 3 times.  \n\nThis can help relax your eyes and refocus your mind!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 16:11:31.400232"
-        }
-      ],
-      "created_at": "2026-07-21 16:11:31.400242",
-      "updated_at": "2026-07-21 16:11:31.400245"
-    },
-    {
-      "id": "94d8f520-48ea-44ff-9612-8034b83fd4f4",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings need some adjustments to help reduce burnout:\n\n1. **Brightness**: Currently at 59%, it's recommended to decrease it to **50%** to reduce eye strain, especially at night.\n2. **Volume**: Currently at 78%, it's advised to lower it to **60%**, as it exceeds the WHO safe limit for extended listening.\n\nWould you like to apply these changes?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 16:14:17.866570"
-        },
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings need adjustments to help reduce burnout:\n\n1. **Brightness**: Currently at **100%**. Recommended to decrease to **50%** to reduce eye strain, especially at night.\n2. **Volume**: Currently at **100%**. Recommended to lower to **60%**, as it exceeds the WHO safe limit for extended listening.\n\nWould you like to apply these changes?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 16:15:02.675240"
-        },
-        {
-          "message": "you do that",
-          "response": "I\u2019m applying the optimal settings now:\n\n- **Brightness** is being decreased from **100%** to **50%** to reduce eye strain.\n- **Volume** is being lowered from **100%** to **60%**, which is within the safe limit for extended listening.\n\nAdjustments are being made for your wellness!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 16:15:22.079564"
-        }
-      ],
-      "created_at": "2026-07-21 16:14:17.867829",
-      "updated_at": "2026-07-21 16:15:22.079573"
-    },
-    {
-      "id": "f3ffd809-c330-4295-aead-9a914eaea089",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "Check my current settings if they are good for less burnout",
-          "response": "Your current settings need some adjustments for better wellness:\n\n1. **Brightness**: Currently at 68%, recommended to decrease to **50%** to reduce eye strain.\n2. **Volume**: Currently at 78%, recommended to decrease to **60%** to stay within safe listening limits.\n\nWould you like to apply these changes?",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 16:19:37.313935"
-        }
-      ],
-      "created_at": "2026-07-21 16:19:37.313943",
-      "updated_at": "2026-07-21 16:19:37.313946"
-    },
-    {
-      "id": "2b87012f-41d5-4118-8828-faa2d970dc68",
-      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
-      "messages": [
-        {
-          "message": "what do you do when you feel the interview anxiety",
-          "response": "When experiencing interview anxiety, here are a few strategies that may help:\n\n1. **Preparation**: Research the company and practice your responses to common interview questions.\n2. **Breathing Exercises**: Take deep breaths to calm your nerves. Inhale for four counts, hold for four, and exhale for four.\n3. **Visualization**: Picture yourself succeeding in the interview. This positive imagery can boost your confidence.\n4. **Physical Activity**: Engage in light exercise before the interview to release endorphins and reduce anxiety.\n5. **Mindfulness**: Practice mindfulness or meditation techniques to center yourself.\n\nIf you\u2019d like a specific wellness tip or break suggestion to help manage anxiety, just let me know!",
-          "model": "openai/gpt-4o-mini",
-          "provider_key": "model_1",
-          "timestamp": "2026-07-21 16:26:45.769842"
-        }
-      ],
-      "created_at": "2026-07-21 16:26:45.769852",
-      "updated_at": "2026-07-21 16:26:45.769855"
+      "created_at": "2026-07-21 19:02:08.993697",
+      "updated_at": "2026-07-21 19:02:24.723901"
     }
   ],
   "activity": [

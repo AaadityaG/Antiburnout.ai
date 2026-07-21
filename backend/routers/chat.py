@@ -188,6 +188,25 @@ async def send_message(token: str, request: ChatRequest):
         except Exception as e:
             print(f"Warning: Failed to save chat history: {e}")
 
+        try:
+            from rag.vector_store import get_user_collection
+            from datetime import datetime as _dt
+            collection = get_user_collection(user_id)
+            doc_text = f"User: {request.message}\nAI: {ai_response}"
+            doc_id = f"{session_id}_{_dt.utcnow().strftime('%Y%m%d%H%M%S%f')}"
+            collection.add_texts(
+                texts=[doc_text],
+                ids=[doc_id],
+                metadatas=[{
+                    "user_id": user_id,
+                    "session_id": session_id,
+                    "timestamp": _dt.utcnow().isoformat(),
+                    "tools_used": ",".join(tools_used) if tools_used else "",
+                }],
+            )
+        except Exception as e:
+            print(f"Warning: Failed to store in vector DB: {e}")
+
         return ChatResponse(
             response=ai_response,
             model=provider_config["model"],

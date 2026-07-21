@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSelector, useDispatch } from 'react-redux'
 import type { RootState, AppDispatch } from '../store'
-import { fetchSessions, fetchSessionMessages, deleteSession, clearAllHistory } from '../store/chatSlice'
+import { fetchSessions, fetchSessionMessages, deleteSession, clearAllHistory, searchChatHistory, clearSearchResults } from '../store/chatSlice'
 import axios from 'axios'
 import ConfirmDialog from './ConfirmDialog'
 import HoverLabel from './HoverLabel'
@@ -19,6 +19,7 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
   const dispatch = useDispatch<AppDispatch>()
   const { token } = useSelector((state: RootState) => state.auth)
   const { sessions, isLoading } = useSelector((state: RootState) => state.chat)
+  const { searchResults, isSearching } = useSelector((state: RootState) => state.chat)
   const user = useSelector((state: RootState) => state.auth.user)
   
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; recommendations?: any[]; tools_used?: string[] }>>([])
@@ -28,6 +29,8 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [semanticSearch, setSemanticSearch] = useState(false)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>()
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
     title: string
@@ -257,6 +260,33 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
     }
   }
 
+  const handleSemanticSearch = (query: string) => {
+    setSearchQuery(query)
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    if (!query.trim() || !semanticSearch) {
+      dispatch(clearSearchResults())
+      return
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      if (token) dispatch(searchChatHistory({ token, query: query.trim(), k: 5 }))
+    }, 400)
+  }
+
+  const toggleSearchMode = () => {
+    setSemanticSearch(prev => {
+      if (prev) dispatch(clearSearchResults())
+      return !prev
+    })
+    setSearchQuery('')
+  }
+
+  const loadSearchResult = (sessionId: string) => {
+    loadSessionMessages(sessionId)
+    setSemanticSearch(false)
+    dispatch(clearSearchResults())
+    setSearchQuery('')
+  }
+
   const filteredSessions = useMemo(() => {
     if (!searchQuery.trim()) return sessions
     const q = searchQuery.toLowerCase()
@@ -323,21 +353,67 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
 
             <div className="px-4 pt-3 pb-2">
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
+                <button
+                  onClick={toggleSearchMode}
+                  className={`absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md cursor-pointer transition-colors ${
+                    semanticSearch ? 'text-accent bg-accent/10' : 'text-white/20 hover:text-white/40'
+                  }`}
+                  title={semanticSearch ? 'Switch to filter mode' : 'Switch to semantic search'}
+                >
+                  {semanticSearch ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                  )}
+                </button>
                 <input
                   type="text"
                   className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-accent/50 transition-[border-color]"
-                  placeholder="Search conversations..."
+                  placeholder={semanticSearch ? 'Semantic Search...' : 'Search conversations...'}
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => semanticSearch ? handleSemanticSearch(e.target.value) : setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
-              {isLoading ? (
+              {isSearching ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                </div>
+              ) : semanticSearch && searchResults.length > 0 ? (
+                <div className="space-y-2 mt-2">
+                  <p className="text-[10px] text-accent/60 uppercase tracking-wider px-1">Semantic Search Results</p>
+                  {searchResults.map((result, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => loadSearchResult(result.session_id)}
+                      className="w-full text-left p-3 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-accent/20 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-[10px] text-accent/50 font-mono">
+                          {Math.round(result.score * 100)}% match
+                        </span>
+                        <span className="text-[10px] text-white/20">
+                          {new Date(result.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/60 line-clamp-3 leading-relaxed">{result.content}</p>
+                    </button>
+                  ))}
+                </div>
+              ) : semanticSearch && searchQuery.trim() ? (
+                <div className="flex flex-col items-center justify-center py-12 text-white/30">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                  </svg>
+                  <p className="mt-3 text-sm">No matching conversations</p>
+                </div>
+              ) : isLoading ? (
                 <div className="flex justify-center py-12">
                   <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                 </div>
