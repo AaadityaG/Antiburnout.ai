@@ -1,6 +1,10 @@
 from langchain_core.tools import tool
 from typing import Optional
 from datetime import datetime
+from contextvars import ContextVar
+
+# Used by the wrapper in graph.py to inject the user's local hour
+_local_hour_var: ContextVar[Optional[int]] = ContextVar('_local_hour_var', default=None)
 
 MOOD_MUSIC_MAP = {
     "stressed": {"emoji": "\U0001f630", "label": "Stressed", "description": "Rain sounds to calm your mind"},
@@ -34,15 +38,15 @@ MOOD_SYNONYMS = {
 def check_system_settings(
     brightness: Optional[int] = None,
     volume: Optional[int] = None,
-    is_night_mode_enabled: Optional[bool] = None,
     auto_apply: bool = False,
 ) -> dict:
-    """Check if the user's current system settings (brightness, volume, night mode) are optimal for their health. Call this whenever a user asks about their settings, wellness, burnout prevention, or when they mention brightness/volume/night mode. Returns recommendations for any settings that need adjustment.
+    """Check if the user's current system settings (brightness, volume) are optimal for their health. Call this whenever a user asks about their settings, wellness, burnout prevention, or when they mention brightness/volume. Returns recommendations for any settings that need adjustment.
 
-    Set auto_apply=True when the user explicitly asks to FIX, OPTIMIZE, APPLY, or UPDATE settings (e.g. "fix my settings", "optimize my brightness", "apply the recommended settings", "update everything"). In this case, apply the changes immediately.
+Set auto_apply=True when the user explicitly asks to FIX, OPTIMIZE, APPLY, or UPDATE settings (e.g. "fix my settings", "optimize my brightness", "apply the recommended settings", "update everything"). In this case, apply the changes immediately.
 
     Set auto_apply=False when the user asks to CHECK, VIEW, or SEE settings (e.g. "check my settings", "what's my brightness", "show me my settings"). In this case, show the recommendations with Execute/Reject buttons for the user to confirm."""
-    hour = datetime.utcnow().hour
+    hour = _local_hour_var.get() or datetime.utcnow().hour
+
     recommendations = []
     status = {}
 
@@ -106,40 +110,6 @@ def check_system_settings(
             status["volume"] = "needs_adjustment"
         else:
             status["volume"] = "optimal"
-
-    if is_night_mode_enabled is not None:
-        if 20 <= hour or hour < 6:
-            if not is_night_mode_enabled:
-                intensity = 50 if 20 <= hour < 22 else 75
-                time_label = "evening" if hour < 22 else "night"
-                recommendations.append({
-                    "type": "night_mode",
-                    "action": "enable",
-                    "current": False,
-                    "recommended": True,
-                    "reason": f"It's {time_label} ({hour}:00). Enabling {intensity}% night mode reduces blue light and protects sleep cycle.",
-                    "priority": 4 if hour >= 22 else 3,
-                    "execute_params": {"intensity": intensity, "enabled": True},
-                })
-                status["night_mode"] = "needs_adjustment"
-            else:
-                status["night_mode"] = "optimal"
-        elif 18 <= hour < 20:
-            if not is_night_mode_enabled:
-                recommendations.append({
-                    "type": "night_mode",
-                    "action": "enable",
-                    "current": False,
-                    "recommended": True,
-                    "reason": "Evening is approaching. A gentle 25% night mode helps prepare your eyes for evening.",
-                    "priority": 2,
-                    "execute_params": {"intensity": 25, "enabled": True},
-                })
-                status["night_mode"] = "needs_adjustment"
-            else:
-                status["night_mode"] = "optimal"
-        else:
-            status["night_mode"] = "optimal"
 
     return {
         "has_recommendations": len(recommendations) > 0,

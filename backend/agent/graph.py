@@ -17,21 +17,18 @@ def build_system_prompt(user: dict, system_metrics: dict = None) -> str:
     if system_metrics:
         b = system_metrics.get("brightness")
         v = system_metrics.get("volume")
-        nm = system_metrics.get("is_night_mode_enabled")
         parts = []
         if b is not None:
             parts.append(f"Current brightness: {b}%")
         if v is not None:
             parts.append(f"Current volume: {v}%")
-        if nm is not None:
-            parts.append(f"Night mode: {'enabled' if nm else 'disabled'}")
         if parts:
             metrics_context = "\nCurrent system readings from the user's device:\n" + "\n".join(f"- {p}" for p in parts)
 
     return f"""You are AntiBurnout Assistant, an AI wellness coach helping users prevent digital burnout during long screen sessions.
 
 Your capabilities:
-- Check and optimize system settings (brightness, volume, night mode) using check_system_settings
+- Check and optimize system settings (brightness, volume) using check_system_settings
 - View the user's activity history using get_user_activity
 - View the user's break schedule preferences using get_user_break_settings
 - Provide wellness break tips using get_break_tip
@@ -74,7 +71,7 @@ For each tool, you must decide whether to AUTO-EXECUTE or SHOW OPTIONS based on 
 5. get_user_break_settings: Always show (no auto_apply needed)
 
 Rules:
-- When the user asks about their settings, burnout, wellness, or mentions brightness/volume/night mode → call check_system_settings with the current values below
+- When the user asks about their settings, burnout, wellness, or mentions brightness/volume → call check_system_settings with the current values below
 - When the user asks about their progress, activity, or work patterns → call get_user_activity
 - When the user asks for a break tip → call get_break_tip
 - When the user asks about their break schedule → call get_user_break_settings
@@ -128,8 +125,33 @@ def create_agent_graph(
         get_break_tip,
         recommend_music,
     )
+    from langchain_core.tools import tool
 
-    tools = [check_system_settings, get_user_activity, get_user_break_settings, get_break_tip, recommend_music]
+    # Create a wrapper that always has the system metrics available
+    _brightness = system_metrics.get("brightness") if system_metrics else None
+    _volume = system_metrics.get("volume") if system_metrics else None
+    _local_hour = system_metrics.get("local_hour") if system_metrics else None
+
+    @tool
+    def check_settings_with_metrics(
+        brightness: int = _brightness if _brightness is not None else 50,
+        volume: int = _volume if _volume is not None else 50,
+        auto_apply: bool = False,
+    ) -> dict:
+        """Check if the user's current system settings (brightness, volume) are optimal for their health. Call this whenever a user asks about their settings, wellness, burnout prevention, or when they mention brightness/volume. Returns recommendations for any settings that need adjustment.
+
+Set auto_apply=True when the user explicitly asks to FIX, OPTIMIZE, APPLY, or UPDATE settings. In this case, apply the changes immediately.
+
+Set auto_apply=False when the user asks to CHECK, VIEW, or SEE settings. In this case, show the recommendations with Execute/Reject buttons for the user to confirm."""
+        from agent.tools import _local_hour_var
+        _local_hour_var.set(_local_hour)
+        return check_system_settings.invoke({
+            "brightness": brightness,
+            "volume": volume,
+            "auto_apply": auto_apply,
+        })
+
+    tools = [check_settings_with_metrics, get_user_activity, get_user_break_settings, get_break_tip, recommend_music]
     llm_with_tools = llm.bind_tools(tools)
 
     tool_node = ToolNode(tools)

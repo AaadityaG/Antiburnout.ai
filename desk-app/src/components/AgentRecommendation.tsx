@@ -25,6 +25,8 @@ function AgentRecommendation({ onChatOpen }: AgentRecommendationProps) {
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null)
   const [isDismissed, setIsDismissed] = useState(false)
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
+  const [executeError, setExecuteError] = useState<string | null>(null)
+  const [isExecuting, setIsExecuting] = useState(false)
 
   // Fetch recommendation periodically with real system metrics
   useEffect(() => {
@@ -37,7 +39,6 @@ function AgentRecommendation({ onChatOpen }: AgentRecommendationProps) {
         // Get real system metrics from Electron
         let brightness: number | null = null
         let volume: number | null = null
-        let nightModeEnabled: boolean = false
         
         if (window.electronAPI) {
           try {
@@ -53,15 +54,9 @@ function AgentRecommendation({ onChatOpen }: AgentRecommendationProps) {
           } catch (e) {
             console.log('Volume not available:', e)
           }
-          
-          try {
-            nightModeEnabled = await window.electronAPI.getNightModeStatus()
-          } catch (e) {
-            console.log('Night mode not available:', e)
-          }
         }
         
-        console.log('System metrics:', { brightness, volume, nightModeEnabled, hour })
+        console.log('System metrics:', { brightness, volume, hour })
 
         const response = await axios.get(`${API_URL}/agent/recommendations`, {
           params: {
@@ -69,7 +64,6 @@ function AgentRecommendation({ onChatOpen }: AgentRecommendationProps) {
             current_hour: hour,
             brightness: brightness,
             volume: volume,
-            is_night_mode_enabled: nightModeEnabled,
             consecutive_sessions: null // Would track from app state
           }
         })
@@ -127,17 +121,6 @@ function AgentRecommendation({ onChatOpen }: AgentRecommendationProps) {
             }
             break
           
-          case 'night_mode':
-            if (recommendation.execute_params?.enabled !== undefined) {
-              console.log('Setting night mode:', recommendation.execute_params)
-              result = await window.electronAPI.setNightMode(
-                recommendation.execute_params.enabled,
-                recommendation.execute_params.intensity
-              )
-              console.log('Night mode result:', result)
-            }
-            break
-          
           default:
             console.log('Unknown recommendation type:', recommendation.type)
         }
@@ -180,7 +163,6 @@ function AgentRecommendation({ onChatOpen }: AgentRecommendationProps) {
     switch (recommendation.type) {
       case 'brightness': return '☀️'
       case 'volume': return '🔊'
-      case 'night_mode': return '🌙'
       case 'session_break': return '⏸️'
       default: return '💡'
     }
@@ -190,7 +172,6 @@ function AgentRecommendation({ onChatOpen }: AgentRecommendationProps) {
     switch (recommendation.type) {
       case 'brightness': return 'rgba(250, 204, 21, 0.15)'
       case 'volume': return 'rgba(244, 63, 94, 0.15)'
-      case 'night_mode': return 'rgba(99, 102, 241, 0.15)'
       case 'session_break': return 'rgba(16, 185, 129, 0.15)'
       default: return 'rgba(212, 252, 212, 0.15)'
     }

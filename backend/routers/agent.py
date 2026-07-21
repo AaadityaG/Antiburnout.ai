@@ -11,7 +11,7 @@ router = APIRouter(prefix="/agent", tags=["Burnout Agent"])
 
 class AgentRecommendation(BaseModel):
     id: str
-    type: str  # "brightness", "volume", "night_mode", "session_break"
+    type: str  # "brightness", "volume", "session_break"
     title: str
     message: str
     priority: int  # 1-5, 5 is highest
@@ -24,7 +24,6 @@ class SystemMetrics(BaseModel):
     brightness: Optional[int] = None  # 0-100
     volume: Optional[int] = None  # 0-100
     current_hour: Optional[int] = None
-    is_night_mode_enabled: Optional[bool] = None
     consecutive_sessions: Optional[int] = None
     last_break_skipped: Optional[bool] = None
 
@@ -106,40 +105,6 @@ def get_volume_recommendation(volume: int) -> Optional[AgentRecommendation]:
     
     return None
 
-def get_night_mode_recommendation(hour: int, is_night_mode_enabled: bool) -> Optional[AgentRecommendation]:
-    """Suggest night mode based on time"""
-    
-    if 20 <= hour or hour < 6:  # 8PM - 6AM
-        if not is_night_mode_enabled:
-            intensity = 50 if 20 <= hour < 22 else 75
-            time_label = "evening" if hour < 22 else "night"
-            return AgentRecommendation(
-                id=f"nightmode_{datetime.utcnow().strftime('%Y%m%d_%H')}",
-                type="night_mode",
-                title="Enable Night Mode",
-                message=f"It's {time_label} time ({hour}:00). Enable {intensity}% night mode to reduce blue light and protect your sleep cycle.",
-                priority=4 if hour >= 22 else 3,
-                action_type="execute",
-                execute_endpoint="agent/execute/night_mode",
-                execute_params={"intensity": intensity, "enabled": True},
-                created_at=datetime.utcnow().isoformat()
-            )
-    elif 18 <= hour < 20:  # 6PM - 8PM
-        if not is_night_mode_enabled:
-            return AgentRecommendation(
-                id=f"nightmode_{datetime.utcnow().strftime('%Y%m%d_%H')}",
-                type="night_mode",
-                title="Consider Night Mode",
-                message="Evening is approaching. Enabling a gentle 25% night mode can help prepare your eyes for the evening.",
-                priority=2,
-                action_type="execute",
-                execute_endpoint="agent/execute/night_mode",
-                execute_params={"intensity": 25, "enabled": True},
-                created_at=datetime.utcnow().isoformat()
-            )
-    
-    return None
-
 def get_session_break_recommendation(consecutive_sessions: int) -> Optional[AgentRecommendation]:
     """Suggest longer breaks for extended work sessions"""
     
@@ -187,7 +152,6 @@ async def get_recommendations(
     brightness: Optional[int] = None,
     volume: Optional[int] = None,
     current_hour: Optional[int] = None,
-    is_night_mode_enabled: Optional[bool] = None,
     consecutive_sessions: Optional[int] = None,
     show_all: Optional[bool] = False
 ):
@@ -207,11 +171,6 @@ async def get_recommendations(
         
         if volume is not None:
             rec = get_volume_recommendation(volume)
-            if rec:
-                recommendations.append(rec)
-        
-        if current_hour is not None and is_night_mode_enabled is not None:
-            rec = get_night_mode_recommendation(current_hour, is_night_mode_enabled)
             if rec:
                 recommendations.append(rec)
         
@@ -242,7 +201,7 @@ async def get_recommendations(
 
 @router.post("/execute/{action_type}")
 async def execute_recommendation(action_type: str, token: str, params: dict):
-    """Execute a recommendation (brightness/volume/night_mode adjustment)"""
+    """Execute a recommendation (brightness/volume adjustment)"""
     try:
         payload = verify_token(token)
         if not payload:

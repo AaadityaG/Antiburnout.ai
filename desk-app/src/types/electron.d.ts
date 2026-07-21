@@ -22,10 +22,8 @@ export interface ElectronAPI {
   getMachineId: () => Promise<string>
   getSystemBrightness: () => Promise<number | null>
   getSystemVolume: () => Promise<number | null>
-  getNightModeStatus: () => Promise<boolean>
   setSystemBrightness: (brightness: number) => Promise<{ success: boolean; error?: string }>
   setSystemVolume: (volume: number) => Promise<{ success: boolean; error?: string }>
-  setNightMode: (enabled: boolean, intensity?: number) => Promise<{ success: boolean; error?: string }>
   onTimerUpdate: (callback: (time: number) => void) => () => void
   onTimerReset: (callback: () => void) => () => void
   onBreakTime: (callback: (data: BreakTimeData) => void) => () => void

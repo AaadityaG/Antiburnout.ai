@@ -22,7 +22,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     brightness: Optional[int] = None
     volume: Optional[int] = None
-    is_night_mode_enabled: Optional[bool] = None
+    local_hour: Optional[int] = None
 
 
 class ChatResponse(BaseModel):
@@ -72,8 +72,8 @@ async def send_message(token: str, request: ChatRequest):
             system_metrics["brightness"] = request.brightness
         if request.volume is not None:
             system_metrics["volume"] = request.volume
-        if request.is_night_mode_enabled is not None:
-            system_metrics["is_night_mode_enabled"] = request.is_night_mode_enabled
+        if request.local_hour is not None:
+            system_metrics["local_hour"] = request.local_hour
 
         from agent.graph import create_agent_graph, build_system_prompt
 

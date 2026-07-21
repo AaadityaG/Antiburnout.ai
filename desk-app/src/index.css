@@ -12,11 +12,18 @@
   --font-display: 'Bricolage Grotesque', sans-serif;
   
   --animate-breathe: breathe 8s infinite ease-in-out;
+  --animate-pulse-glow: pulse-glow 3s infinite ease-in-out;
+  --animate-spin-slow: spin 6s linear infinite;
 }
 
 @keyframes breathe {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.03); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(212, 252, 212, 0.15), 0 0 4px rgba(212, 252, 212, 0.1); }
+  50% { box-shadow: 0 0 24px rgba(212, 252, 212, 0.3), 0 0 8px rgba(212, 252, 212, 0.2); }
 }
 
 @layer utilities {
@@ -57,5 +64,46 @@ body {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(212, 252, 212, 0.3);
+}
+
+/* Seek bar styling */
+input[type="range"].seek-bar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"].seek-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d4fcd4;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(212, 252, 212, 0.4);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+input[type="range"].seek-bar:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+input[type="range"].seek-bar::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d4fcd4;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 6px rgba(212, 252, 212, 0.4);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+input[type="range"].seek-bar:hover::-moz-range-thumb {
+  opacity: 1;
 }
 

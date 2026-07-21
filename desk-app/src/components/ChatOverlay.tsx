@@ -5,6 +5,7 @@ import type { RootState, AppDispatch } from '../store'
 import { fetchSessions, fetchSessionMessages, deleteSession, clearAllHistory } from '../store/chatSlice'
 import axios from 'axios'
 import ConfirmDialog from './ConfirmDialog'
+import HoverLabel from './HoverLabel'
 
 const API_URL = import.meta.env.VITE_API_URL 
 
@@ -44,6 +45,8 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const processedAutoRef = useRef<Set<string>>(new Set())
+  const [autoExecuteStatus, setAutoExecuteStatus] = useState<Record<string, 'pending' | 'success' | 'failed'>>({})
+  const [executeErrors, setExecuteErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (isOpen && token) {
@@ -69,21 +72,25 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
         if (processedAutoRef.current.has(rec.id)) continue
         if (rec.action_type === 'auto_execute' && rec.execute_params) {
           processedAutoRef.current.add(rec.id)
+          setAutoExecuteStatus(prev => ({ ...prev, [rec.id]: 'pending' }))
           ;(async () => {
             try {
+              let result = { success: false }
               switch (rec.type) {
                 case 'brightness':
-                  await window.electronAPI.setSystemBrightness(rec.execute_params.target_brightness)
+                  result = await window.electronAPI.setSystemBrightness(rec.execute_params.target_brightness)
                   break
                 case 'volume':
-                  await window.electronAPI.setSystemVolume(rec.execute_params.target_volume)
-                  break
-                case 'night_mode':
-                  await window.electronAPI.setNightMode(rec.execute_params.enabled, rec.execute_params.intensity)
+                  result = await window.electronAPI.setSystemVolume(rec.execute_params.target_volume)
                   break
               }
+              setAutoExecuteStatus(prev => ({
+                ...prev,
+                [rec.id]: result.success ? 'success' : 'failed'
+              }))
             } catch (e) {
               console.error('Auto-execute failed:', e)
+              setAutoExecuteStatus(prev => ({ ...prev, [rec.id]: 'failed' }))
             }
           })()
         }
@@ -184,8 +191,6 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
       // Get real system metrics from Electron
       let brightness: number | null = null
       let volume: number | null = null
-      let nightModeEnabled: boolean = false
-      
       if (window.electronAPI) {
         try {
           brightness = await window.electronAPI.getSystemBrightness()
@@ -198,15 +203,9 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
         } catch (e) {
           console.log('Volume not available:', e)
         }
-        
-        try {
-          nightModeEnabled = await window.electronAPI.getNightModeStatus()
-        } catch (e) {
-          console.log('Night mode not available:', e)
-        }
       }
 
-      console.log('Sending chat with system metrics:', { brightness, volume, nightModeEnabled })
+      console.log('Sending chat with system metrics:', { brightness, volume })
 
       const response = await axios.post(`${API_URL}/chat/send`, {
         message: userMessage,
@@ -215,7 +214,7 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
         session_id: activeSessionId || undefined,
         brightness: brightness,
         volume: volume,
-        is_night_mode_enabled: nightModeEnabled
+        local_hour: new Date().getHours()
       }, {
         params: { token }
       })
@@ -433,16 +432,6 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
 
                 <button
                   className="w-9 h-9 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary cursor-pointer"
-                  onClick={startNewChat}
-                  title="New Chat"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                </button>
-
-                <button
-                  className="w-9 h-9 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary cursor-pointer"
                   onClick={onClose}
                 >
                   ✕
@@ -515,23 +504,38 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                             {msg.recommendations.filter((rec: any) => rec.action_type === 'auto_execute').length > 0 && (
                               <>
                                 <div className="text-xs font-semibold text-white/60 uppercase tracking-wide">Applied Settings:</div>
-                                {msg.recommendations.filter((rec: any) => rec.action_type === 'auto_execute').map((rec: any) => (
-                                  <div key={rec.id} className="p-4 rounded-xl bg-green-500/5 border border-green-500/15 transition-all">
+                                {msg.recommendations.filter((rec: any) => rec.action_type === 'auto_execute').map((rec: any) => {
+                              const execStatus = autoExecuteStatus[rec.id] || 'pending'
+                              return (
+                                  <div key={rec.id} className={`p-4 rounded-xl transition-all ${execStatus === 'failed' ? 'bg-red-500/5 border border-red-500/15' : 'bg-green-500/5 border border-green-500/15'}`}>
                                     <div className="flex items-start gap-3">
                                       <span className="text-2xl">
-                                        {rec.type === 'brightness' ? '☀️' : rec.type === 'volume' ? '🔊' : rec.type === 'night_mode' ? '🌙' : '⏸️'}
+                                        {rec.type === 'brightness' ? '☀️' : rec.type === 'volume' ? '🔊' : '⏸️'}
                                       </span>
                                       <div className="flex-1">
                                         <div className="text-sm font-semibold text-white/90">{rec.title}</div>
                                         <div className="text-xs text-white/60 mt-1">{rec.message}</div>
-                                        <div className="flex items-center gap-1.5 mt-2 text-green-400 text-xs font-medium">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                                          Applied
-                                        </div>
+                                        {execStatus === 'failed' ? (
+                                          <div className="flex items-center gap-1.5 mt-2 text-red-400 text-xs font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                                            Failed to apply - click Execute in recommendations below
+                                          </div>
+                                        ) : execStatus === 'success' ? (
+                                          <div className="flex items-center gap-1.5 mt-2 text-green-400 text-xs font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                                            Applied
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-1.5 mt-2 text-yellow-400 text-xs font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+                                            Applying...
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
-                                ))}
+                              )
+                            })}
                               </>
                             )}
 
@@ -542,7 +546,7 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                                   <div key={rec.id} className="p-4 rounded-xl bg-white/5 border border-white/10 transition-all">
                                     <div className="flex items-start gap-3 mb-3">
                                       <span className="text-2xl">
-                                        {rec.type === 'brightness' ? '☀️' : rec.type === 'volume' ? '🔊' : rec.type === 'night_mode' ? '🌙' : '⏸️'}
+                                        {rec.type === 'brightness' ? '☀️' : rec.type === 'volume' ? '🔊' : '⏸️'}
                                       </span>
                                       <div className="flex-1">
                                         <div className="text-sm font-semibold text-white/90">{rec.title}</div>
@@ -565,9 +569,6 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                                                   case 'volume':
                                                     result = await window.electronAPI.setSystemVolume(rec.execute_params.target_volume)
                                                     break
-                                                  case 'night_mode':
-                                                    result = await window.electronAPI.setNightMode(rec.execute_params.enabled, rec.execute_params.intensity)
-                                                    break
                                                 }
                                                 if (result.success) {
                                                   btn.innerHTML = 'Applied!'
@@ -580,12 +581,23 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                                                       rejectBtn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
                                                     }
                                                   }
+                                                } else {
+                                                  btn.innerHTML = 'Failed - retry'
+                                                  btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 cursor-pointer transition-all'
+                                                  setTimeout(() => {
+                                                    btn.innerHTML = 'Execute'
+                                                    btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 cursor-pointer transition-all'
+                                                  }, 3000)
                                                 }
                                               }
                                             } catch (error) {
                                               console.error('Failed to execute:', error)
-                                              btn.innerHTML = 'Failed'
-                                              setTimeout(() => { btn.innerHTML = 'Execute' }, 2000)
+                                              btn.innerHTML = 'Failed - retry'
+                                              btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 cursor-pointer transition-all'
+                                              setTimeout(() => {
+                                                btn.innerHTML = 'Execute'
+                                                btn.className = 'flex-1 px-4 py-2 rounded-lg text-xs font-semibold bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 cursor-pointer transition-all'
+                                              }, 3000)
                                             }
                                           }}
                                         >
@@ -728,15 +740,16 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                   onKeyDown={handleKeyDown}
                   placeholder="Type your message..."
                 />
-                <button
-                  className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white/60 flex items-center justify-center hover:bg-white/10 hover:text-white cursor-pointer shrink-0 transition-all"
-                  onClick={startNewChat}
-                  title="New Chat"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                </button>
+                <HoverLabel label="New Chat" position="top">
+                  <button
+                    className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white/60 flex items-center justify-center hover:bg-white/10 hover:text-white cursor-pointer shrink-0 transition-all"
+                    onClick={startNewChat}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                </HoverLabel>
                 <button
                   className="h-12 rounded-full bg-glass glass-blur border border-white/20 text-white font-medium px-6 hover:bg-accent hover:text-primary cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
                   onClick={() => handleSend()}

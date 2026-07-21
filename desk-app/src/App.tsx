@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchSettings, updateSettings, clearSettings } from './store/settingsSlice'
 import { fetchTipRecommendation, clearTip } from './store/tipSlice'
@@ -12,6 +12,7 @@ import InsightsOverlay from './components/InsightsOverlay'
 import BreakView from './components/BreakView'
 import ChatOverlay from './components/ChatOverlay'
 import MusicOverlay from './components/MusicOverlay'
+import HoverLabel from './components/HoverLabel'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -47,10 +48,20 @@ function App() {
 
   const [currentTrack, setCurrentTrack] = useState<Video | null>(null)
   const [isMusicPlaying, setIsMusicPlaying] = useState(false)
+  const [isMusicMuted, setIsMusicMuted] = useState(false)
+  const [playlist, setPlaylist] = useState<Video[]>([])
+  const [playlistIndex, setPlaylistIndex] = useState(-1)
+  const [playerTime, setPlayerTime] = useState({ current: 0, duration: 0 })
 
   const ytPlayerRef = useRef<any>(null)
   const ytReadyRef = useRef(false)
   const ytContainerRef = useRef<HTMLDivElement>(null)
+  const playlistRef = useRef<Video[]>([])
+  const playlistIndexRef = useRef(-1)
+
+  // Keep refs in sync with state for use in YouTube callbacks
+  useEffect(() => { playlistRef.current = playlist }, [playlist])
+  useEffect(() => { playlistIndexRef.current = playlistIndex }, [playlistIndex])
 
   // Load YouTube IFrame API once
   useEffect(() => {
@@ -98,6 +109,19 @@ function App() {
           onStateChange: (e: any) => {
             if (e.data === window.YT.PlayerState.PLAYING) setIsMusicPlaying(true)
             if (e.data === window.YT.PlayerState.PAUSED) setIsMusicPlaying(false)
+            if (e.data === window.YT.PlayerState.ENDED) {
+              const pl = playlistRef.current
+              const idx = playlistIndexRef.current
+              if (pl.length > 0) {
+                const next = (idx + 1) % pl.length
+                const track = pl[next]
+                setCurrentTrack(track)
+                setPlaylistIndex(next)
+                if (ytPlayerRef.current && ytPlayerRef.current.loadVideoById) {
+                  ytPlayerRef.current.loadVideoById(track.video_id)
+                }
+              }
+            }
           },
         },
       })
@@ -105,9 +129,33 @@ function App() {
     tryCreate()
   }, [])
 
-  const handlePlayTrack = useCallback((track: Video) => {
+  // Poll player time
+  useEffect(() => {
+    if (!isMusicPlaying || !ytPlayerRef.current) return
+    const interval = setInterval(() => {
+      try {
+        const p = ytPlayerRef.current
+        if (p && p.getCurrentTime && p.getDuration) {
+          setPlayerTime({ current: p.getCurrentTime(), duration: p.getDuration() })
+        }
+      } catch {}
+    }, 500)
+    return () => clearInterval(interval)
+  }, [isMusicPlaying])
+
+  const handleSeek = useCallback((seconds: number) => {
+    if (!ytPlayerRef.current) return
+    ytPlayerRef.current.seekTo(seconds, true)
+    setPlayerTime(prev => ({ ...prev, current: seconds }))
+  }, [])
+
+  const handlePlayTrack = useCallback((track: Video, trackList?: Video[], index?: number) => {
     setCurrentTrack(track)
     loadVideo(track.video_id)
+    if (trackList && index !== undefined) {
+      setPlaylist(trackList)
+      setPlaylistIndex(index)
+    }
     if (!isMusicOpen) setIsMusicOpen(true)
   }, [isMusicOpen, loadVideo])
 
@@ -120,12 +168,42 @@ function App() {
     }
   }, [isMusicPlaying])
 
+  const handleToggleMute = useCallback(() => {
+    if (!ytPlayerRef.current) return
+    if (isMusicMuted) {
+      ytPlayerRef.current.unMute()
+    } else {
+      ytPlayerRef.current.mute()
+    }
+    setIsMusicMuted(!isMusicMuted)
+  }, [isMusicMuted])
+
+  const handleNextTrack = useCallback(() => {
+    if (playlist.length === 0) return
+    const next = (playlistIndex + 1) % playlist.length
+    const track = playlist[next]
+    setCurrentTrack(track)
+    setPlaylistIndex(next)
+    loadVideo(track.video_id)
+  }, [playlist, playlistIndex, loadVideo])
+
+  const handlePrevTrack = useCallback(() => {
+    if (playlist.length === 0) return
+    const prev = playlistIndex <= 0 ? playlist.length - 1 : playlistIndex - 1
+    const track = playlist[prev]
+    setCurrentTrack(track)
+    setPlaylistIndex(prev)
+    loadVideo(track.video_id)
+  }, [playlist, playlistIndex, loadVideo])
+
   const handleStopMusic = useCallback(() => {
     if (ytPlayerRef.current && ytPlayerRef.current.stopVideo) {
       ytPlayerRef.current.stopVideo()
     }
     setCurrentTrack(null)
     setIsMusicPlaying(false)
+    setPlaylist([])
+    setPlaylistIndex(-1)
   }, [])
 
   const handlePlayMusic = useCallback(async (mood: string) => {
@@ -205,6 +283,13 @@ function App() {
     const s = totalSeconds % 60
     if (h > 0) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
+  const formatSeconds = (s: number): string => {
+    if (!s || !isFinite(s)) return '0:00'
+    const m = Math.floor(s / 60)
+    const sec = Math.floor(s % 60)
+    return `${m}:${sec.toString().padStart(2, '0')}`
   }
 
   const sessionCompletedRef = useRef(false)
@@ -344,27 +429,49 @@ function App() {
         </div>
 
         <div className="absolute -bottom-9/12 flex gap-4 items-center">
-          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={resetTimer} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={togglePause} className="w-42 px-5 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
-            {isPaused ? 'Resume' : 'Pause'}
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsSettingsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsProfileOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsInsightsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsMusicOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsChatOpen(true)} className="w-14 h-14 absolute -right-11/12 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          </motion.button>
+          <HoverLabel label="Reset">
+            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={resetTimer} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </motion.button>
+          </HoverLabel>
+          <HoverLabel label={isPaused ? 'Resume' : 'Pause'}>
+            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={togglePause} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
+              {isPaused ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+              )}
+            </motion.button>
+          </HoverLabel>
+          <HoverLabel label="Settings">
+            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsSettingsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </motion.button>
+          </HoverLabel>
+          <HoverLabel label="Profile">
+            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsProfileOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </motion.button>
+          </HoverLabel>
+          <HoverLabel label="Insights">
+            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsInsightsOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+            </motion.button>
+          </HoverLabel>
+          <HoverLabel label="Music">
+            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsMusicOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </motion.button>
+          </HoverLabel>
+          <HoverLabel label="Agent">
+            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsChatOpen(true)} className="relative w-14 h-14 rounded-full bg-gradient-to-br from-accent/25 to-green-600/20 glass-blur border border-accent/30 text-accent flex items-center justify-center cursor-pointer transition-all duration-300 animate-pulse-glow hover:from-accent/45 hover:to-green-500/30 hover:border-accent/60 hover:shadow-[0_0_30px_rgba(212,252,212,0.35)]">
+              <span className="absolute inset-0 rounded-full border border-accent/10 animate-spin-slow" style={{ borderTopColor: 'rgba(212,252,212,0.4)' }} />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="relative z-10"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24A2.5 2.5 0 0 0 14.5 2z"/></svg>
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-accent/90 flex items-center justify-center z-20 shadow-[0_0_6px_rgba(212,252,212,0.5)]">
+                <span className="text-[6px] font-black text-primary leading-none">AI</span>
+              </span>
+            </motion.button>
+          </HoverLabel>
         </div>
       </main>
 
@@ -379,57 +486,133 @@ function App() {
         ref={ytContainerRef}
         initial={false}
         animate={currentTrack && !isMusicOpen
-          ? { opacity: 1, y: 0, scale: 1, width: 380, height: 90 }
+          ? { opacity: 1, y: 0, scale: 1, width: 440, height: 190 }
           : { opacity: 0, y: 40, scale: 0.9, width: 0, height: 0 }
         }
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed bottom-6 left-6 z-[9997] rounded-2xl overflow-hidden border border-white/10 shadow-2xl pointer-events-auto"
+        className="fixed bottom-6 left-6 z-[9997] rounded-3xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] pointer-events-auto"
         style={{ pointerEvents: currentTrack && !isMusicOpen ? 'auto' : 'none' }}
       >
         <div id="yt-player-container" className="w-full h-full" />
         {/* Mini-player overlay on top of the iframe */}
-        <div className="absolute inset-0 flex items-center gap-3 px-4 bg-black/80 backdrop-blur-xl">
+        <div className="absolute inset-0 flex flex-col bg-black/90 backdrop-blur-2xl">
           {currentTrack && (
             <>
-              <img
-                src={currentTrack.thumbnail}
-                alt={currentTrack.title}
-                className="w-14 h-14 rounded-xl object-cover shrink-0 ring-1 ring-white/10"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white truncate">{currentTrack.title}</p>
-                <p className="text-xs text-white/40 truncate">{currentTrack.channel}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleToggleMusicPlay}
-                  className="w-10 h-10 rounded-full bg-white/10 border border-white/10 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-colors cursor-pointer"
-                >
-                  {isMusicPlaying ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                  )}
-                </motion.button>
+              {/* Top row: thumbnail + track info + expand */}
+              <div className="flex items-center gap-4 px-5 pt-4 pb-2">
+                <img
+                  src={currentTrack.thumbnail}
+                  alt={currentTrack.title}
+                  className="w-14 h-14 rounded-2xl object-cover shrink-0 ring-1 ring-white/10 shadow-lg"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white truncate">{currentTrack.title}</p>
+                  <p className="text-xs text-white/40 truncate mt-0.5">{currentTrack.channel}</p>
+                </div>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setIsMusicOpen(true)}
-                  className="w-10 h-10 rounded-full bg-white/10 border border-white/10 text-white flex items-center justify-center hover:bg-accent hover:text-primary transition-colors cursor-pointer"
-                  title="Open player"
+                  className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 text-white/60 flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/30 transition-colors cursor-pointer shrink-0"
+                  title="Expand"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                 </motion.button>
+              </div>
+
+              {/* Bottom row: progress bar + transport controls */}
+              <div className="px-5 pb-4 pt-1 flex items-center gap-3">
+                {/* Time: current */}
+                <span className="text-[11px] text-white/30 tabular-nums w-9 text-right shrink-0">
+                  {playerTime.duration > 0 ? formatSeconds(playerTime.current) : '0:00'}
+                </span>
+
+                {/* Progress bar */}
+                <div className="flex-1">
+                  <div className="relative h-1.5 rounded-full bg-white/10 group cursor-pointer"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const pct = (e.clientX - rect.left) / rect.width
+                      handleSeek(Math.max(0, Math.min(1, pct)) * playerTime.duration)
+                    }}
+                  >
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full bg-accent/70 transition-[width] duration-200"
+                      style={{ width: `${playerTime.duration > 0 ? (playerTime.current / playerTime.duration) * 100 : 0}%` }}
+                    />
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-accent shadow-[0_0_8px_rgba(212,252,212,0.5)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                      style={{ left: `calc(${playerTime.duration > 0 ? (playerTime.current / playerTime.duration) * 100 : 0}% - 6px)` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Time: duration */}
+                <span className="text-[11px] text-white/30 tabular-nums w-9 shrink-0">
+                  {playerTime.duration > 0 ? formatSeconds(playerTime.duration) : '0:00'}
+                </span>
+              </div>
+
+              {/* Transport row */}
+              <div className="px-5 pb-4 flex items-center justify-center gap-4">
+                {/* Stop */}
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={handleStopMusic}
-                  className="w-10 h-10 rounded-full bg-white/10 border border-white/10 text-white/50 flex items-center justify-center hover:bg-red-500/20 hover:text-red-400 transition-colors cursor-pointer"
-                  title="Stop music"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
+                  title="Stop"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                </motion.button>
+
+                {/* Prev */}
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handlePrevTrack}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                </motion.button>
+
+                {/* Play/Pause */}
+                <motion.button
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.92 }}
+                  onClick={handleToggleMusicPlay}
+                  className="w-12 h-12 rounded-full bg-white/10 border border-white/15 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/30 transition-all cursor-pointer shrink-0"
+                >
+                  {isMusicPlaying ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  )}
+                </motion.button>
+
+                {/* Next */}
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleNextTrack}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                </motion.button>
+
+                {/* Mute */}
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleToggleMute}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 transition-colors cursor-pointer shrink-0"
+                  title={isMusicMuted ? 'Unmute' : 'Mute'}
+                >
+                  {isMusicMuted ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                  )}
                 </motion.button>
               </div>
             </>
@@ -442,7 +625,16 @@ function App() {
         isOpen={isMusicOpen}
         onClose={handleCloseMusicOverlay}
         currentTrack={currentTrack}
+        isPlaying={isMusicPlaying}
+        isMuted={isMusicMuted}
+        playerTime={playerTime}
         onPlayTrack={handlePlayTrack}
+        onTogglePlay={handleToggleMusicPlay}
+        onToggleMute={handleToggleMute}
+        onSeek={handleSeek}
+        onNext={handleNextTrack}
+        onPrev={handlePrevTrack}
+        onStop={handleStopMusic}
       />
 
       <ProfileOverlay isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
