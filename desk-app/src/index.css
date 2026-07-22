@@ -107,3 +107,11 @@ input[type="range"].seek-bar:hover::-moz-range-thumb {
   opacity: 1;
 }
 
+#yt-mini-container iframe {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+

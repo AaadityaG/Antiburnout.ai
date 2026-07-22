@@ -16,6 +16,8 @@ import HoverLabel from './components/HoverLabel'
 
 const API_URL = import.meta.env.VITE_API_URL
 
+const AMBIENT_MOODS = new Set(['stressed', 'anxious', 'tired', 'sad', 'sleep', 'meditate'])
+
 interface Video {
   video_id: string
   title: string
@@ -45,6 +47,7 @@ function App() {
   const [isInsightsOpen, setIsInsightsOpen] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isMusicOpen, setIsMusicOpen] = useState(false)
+  const [ambientStage, setAmbientStage] = useState<'off' | 'bg'>('off')
 
   const [currentTrack, setCurrentTrack] = useState<Video | null>(null)
   const [isMusicPlaying, setIsMusicPlaying] = useState(false)
@@ -52,6 +55,11 @@ function App() {
   const [playlist, setPlaylist] = useState<Video[]>([])
   const [playlistIndex, setPlaylistIndex] = useState(-1)
   const [playerTime, setPlayerTime] = useState({ current: 0, duration: 0 })
+  const [qualityLevels, setQualityLevels] = useState<{ label: string; index: number }[]>([])
+  const [currentQuality, setCurrentQuality] = useState<string>('auto')
+  const [showQualityPicker, setShowQualityPicker] = useState(false)
+  const [cursorVisible, setCursorVisible] = useState(true)
+  const [musicHover, setMusicHover] = useState(false)
 
   const ytPlayerRef = useRef<any>(null)
   const ytReadyRef = useRef(false)
@@ -62,6 +70,16 @@ function App() {
   // Keep refs in sync with state for use in YouTube callbacks
   useEffect(() => { playlistRef.current = playlist }, [playlist])
   useEffect(() => { playlistIndexRef.current = playlistIndex }, [playlistIndex])
+
+  // Auto-hide UI after 3s inactivity in ambient mode
+  useEffect(() => {
+    if (ambientStage !== 'bg') { setCursorVisible(true); return }
+    let timer: ReturnType<typeof setTimeout>
+    const onMove = () => { setCursorVisible(true); clearTimeout(timer); timer = setTimeout(() => setCursorVisible(false), 3000) }
+    window.addEventListener('mousemove', onMove)
+    timer = setTimeout(() => setCursorVisible(false), 3000)
+    return () => { window.removeEventListener('mousemove', onMove); clearTimeout(timer) }
+  }, [ambientStage])
 
   // Load YouTube IFrame API once
   useEffect(() => {
@@ -77,12 +95,46 @@ function App() {
     }
   }, [])
 
+  // Quality level helpers
+  const refreshQualityLevels = useCallback(() => {
+    try {
+      const p = ytPlayerRef.current
+      if (!p || !p.getAvailableQualityLevels) return
+      const levels: { label: string; index: number }[] = p.getAvailableQualityLevels()
+      setQualityLevels(levels)
+      const current = p.getPlaybackQuality()
+      setCurrentQuality(current || 'auto')
+    } catch {}
+  }, [])
+
+  const handleSetQuality = useCallback((label: string) => {
+    try {
+      const p = ytPlayerRef.current
+      if (!p) return
+      p.setPlaybackQuality(label)
+      setCurrentQuality(label)
+      setShowQualityPicker(false)
+    } catch {}
+  }, [])
+
+  // Close quality picker on outside click
+  useEffect(() => {
+    if (!showQualityPicker) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-quality-picker]')) setShowQualityPicker(false)
+    }
+    document.addEventListener('mousedown', handler, true)
+    return () => document.removeEventListener('mousedown', handler, true)
+  }, [showQualityPicker])
+
   // Create or load video into the persistent player
   const loadVideo = useCallback((videoId: string) => {
     if (!ytContainerRef.current) return
 
     if (ytPlayerRef.current && ytPlayerRef.current.loadVideoById) {
       ytPlayerRef.current.loadVideoById(videoId)
+      try { ytPlayerRef.current.setPlaybackQuality('highres') } catch {}
       return
     }
 
@@ -91,7 +143,7 @@ function App() {
         setTimeout(tryCreate, 200)
         return
       }
-      ytPlayerRef.current = new window.YT.Player('yt-player-container', {
+      ytPlayerRef.current = new window.YT.Player('yt-mini-container', {
         videoId,
         playerVars: {
           autoplay: 1,
@@ -101,13 +153,24 @@ function App() {
           disablekb: 1,
           modestbranding: 1,
           rel: 0,
+          cc_load_policy: 0,
+          iv_load_policy: 3,
         },
         events: {
           onReady: () => {
+            try {
+              const p = ytPlayerRef.current
+              p.setPlaybackQuality('highres')
+              p.setOption('captions', 'track', {})
+              refreshQualityLevels()
+            } catch {}
             setIsMusicPlaying(true)
           },
           onStateChange: (e: any) => {
-            if (e.data === window.YT.PlayerState.PLAYING) setIsMusicPlaying(true)
+            if (e.data === window.YT.PlayerState.PLAYING) {
+              setIsMusicPlaying(true)
+              refreshQualityLevels()
+            }
             if (e.data === window.YT.PlayerState.PAUSED) setIsMusicPlaying(false)
             if (e.data === window.YT.PlayerState.ENDED) {
               const pl = playlistRef.current
@@ -119,6 +182,7 @@ function App() {
                 setPlaylistIndex(next)
                 if (ytPlayerRef.current && ytPlayerRef.current.loadVideoById) {
                   ytPlayerRef.current.loadVideoById(track.video_id)
+                  try { ytPlayerRef.current.setPlaybackQuality('highres') } catch {}
                 }
               }
             }
@@ -149,7 +213,7 @@ function App() {
     setPlayerTime(prev => ({ ...prev, current: seconds }))
   }, [])
 
-  const handlePlayTrack = useCallback((track: Video, trackList?: Video[], index?: number) => {
+  const handlePlayTrack = useCallback((track: Video, trackList?: Video[], index?: number, mood?: string) => {
     setCurrentTrack(track)
     loadVideo(track.video_id)
     if (trackList && index !== undefined) {
@@ -157,7 +221,7 @@ function App() {
       setPlaylistIndex(index)
     }
     if (!isMusicOpen) setIsMusicOpen(true)
-  }, [isMusicOpen, loadVideo])
+  }, [isMusicOpen, loadVideo, ambientStage])
 
   const handleToggleMusicPlay = useCallback(() => {
     if (!ytPlayerRef.current) return
@@ -202,13 +266,15 @@ function App() {
     }
     setCurrentTrack(null)
     setIsMusicPlaying(false)
+    setAmbientStage('off')
     setPlaylist([])
     setPlaylistIndex(-1)
   }, [])
 
   const handlePlayMusic = useCallback(async (mood: string) => {
     try {
-      const res = await fetch(`${API_URL}/music/mood/${mood}?max_results=1`)
+      const endpoint = AMBIENT_MOODS.has(mood) ? 'ambient' : 'mood'
+      const res = await fetch(`${API_URL}/music/${endpoint}/${mood}?max_results=1`)
       const data = await res.json()
       if (data.videos && data.videos.length > 0) {
         const track = data.videos[0]
@@ -382,30 +448,58 @@ function App() {
 
   return (
     <div className="relative w-screen h-screen flex flex-col justify-center items-center text-center overflow-hidden font-sans">
-      {/* Background */}
+      {/* Background - always shown, fades out to reveal video underneath */}
       <div
-        className="fixed inset-0 z-[-2] transition-transform duration-[10000ms] scale-105 bg-cover bg-center bg-no-repeat"
+        className={`fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat transition-opacity duration-700 ${ambientStage !== 'off' ? 'opacity-0' : ''}`}
         style={{ backgroundImage: "url('nature_bg.png')", backgroundColor: "#0c140c" }}
       ></div>
-      <div className="fixed inset-0 bg-gradient-to-br from-black/40 via-transparent to-black/60 z-[-1]"></div>
+      <div className={`fixed inset-0 bg-gradient-to-br from-black/40 via-transparent to-black/60 z-[0] transition-opacity duration-700 ${ambientStage === 'bg' ? 'opacity-0' : ''}`}></div>
 
       <div className="fixed top-0 left-0 right-0 h-20 drag-area z-50"></div>
 
       {/* Logo */}
-      <div className="fixed top-6 left-8 z-[100] drag-none select-none">
-        <span className="text-2xl font-semibold tracking-tight text-white/80">
-          antiburnout<span className="text-emerald-400">.ai</span>
-        </span>
-      </div>
+        <div className={`fixed top-6 left-8 z-[100] drag-none select-none transition-opacity ${(ambientStage === 'bg' && !cursorVisible) ? 'duration-[8000ms] opacity-0 pointer-events-none' : 'duration-300 opacity-100'}`}>
+          <span className="text-2xl font-semibold tracking-tight text-white/80">
+            antiburnout<span className="text-emerald-400">.ai</span>
+          </span>
+        </div>
 
-      <div className="fixed top-8 right-8 flex gap-3 z-[100] drag-none">
-        <button onClick={() => window.electronAPI?.sendMinimizeToTray()} className="w-10 h-10 rounded-xl bg-glass glass-blur border border-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all duration-300 cursor-pointer">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg>
-        </button>
+      <div className={`fixed top-8 right-8 flex gap-3 z-[100] drag-none transition-opacity ${(ambientStage === 'bg' && !cursorVisible) ? 'duration-[8000ms] opacity-0 pointer-events-none' : 'duration-300 opacity-100'}`}>
+        {currentTrack && (
+          <HoverLabel label={ambientStage === 'bg' ? 'Exit ambient' : 'Ambient'}>
+            <button
+              onClick={() => {
+                if (ambientStage === 'bg') {
+                  setAmbientStage('off')
+                } else {
+                  setAmbientStage('bg')
+                }
+              }}
+              className={`w-10 h-10 rounded-xl border text-white flex items-center justify-center cursor-pointer ${
+                ambientStage === 'bg'
+                  ? 'bg-accent/20 border-accent/40 shadow-[0_0_20px_rgba(212,252,212,0.25)] animate-pulse-glow'
+                  : 'bg-glass glass-blur border-white/10 hover:bg-accent/15 hover:border-accent/30 hover:shadow-[0_0_12px_rgba(212,252,212,0.15)]'
+              }`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {ambientStage === 'bg' ? (
+                  <><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/></>
+                ) : (
+                  <><polygon points="5 3 19 12 5 21 5 3"/></>
+                )}
+              </svg>
+            </button>
+          </HoverLabel>
+        )}
+        <HoverLabel label="Minimize">
+          <button onClick={() => window.electronAPI?.sendMinimizeToTray()} className="w-10 h-10 rounded-xl bg-glass glass-blur border border-white/10 text-white flex items-center justify-center hover:bg-white/20 cursor-pointer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg>
+          </button>
+        </HoverLabel>
       </div>
 
       {/* Main UI */}
-      <main className={`relative flex flex-col mt-24 items-center justify-center transition-all duration-1000 ${isBreakActive ? 'scale-110 blur-xl opacity-0' : 'scale-100 opacity-100'}`}>
+      <main className={`relative flex flex-col mt-24 items-center justify-center transition-opacity ${(ambientStage === 'bg' && !cursorVisible) || isBreakActive ? 'duration-[8000ms] opacity-0 pointer-events-none' : 'duration-300 opacity-100'}`}>
         <div className="relative mb-8 animate-breathe">
           <h1 className="font-mono text-[10rem] font-extralight leading-none tracking-tighter bg-gradient-to-b from-white to-accent bg-clip-text text-transparent drop-shadow-2xl">
             {formatTime(timeRemaining)}
@@ -458,11 +552,46 @@ function App() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
             </motion.button>
           </HoverLabel>
-          <HoverLabel label="Music">
-            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsMusicOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
+          <div className="relative" onMouseEnter={() => setMusicHover(true)} onMouseLeave={() => setMusicHover(false)}>
+            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => currentTrack ? setIsMusicOpen(true) : setIsMusicOpen(true)} className="w-14 h-14 rounded-full bg-glass glass-blur border border-white/20 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/40 transition-colors cursor-pointer">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
             </motion.button>
-          </HoverLabel>
+            {musicHover && currentTrack && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-0 pb-3 w-full">
+              <div className="py-2 px-3 rounded-xl bg-black/80 backdrop-blur-xl border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex flex-col gap-2 min-w-[160px]">
+                <p className="text-[11px] text-white/40 truncate max-w-[140px]">{currentTrack.title}</p>
+                <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-full bg-accent/70 rounded-full" style={{ width: `${playerTime.duration > 0 ? (playerTime.current / playerTime.duration) * 100 : 0}%` }} />
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <button onClick={handlePrevTrack} className="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white cursor-pointer">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                  </button>
+                  <button onClick={handleToggleMusicPlay} className="w-8 h-8 rounded-full bg-white/10 border border-white/15 text-white flex items-center justify-center hover:bg-accent hover:text-primary cursor-pointer">
+                    {isMusicPlaying ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    )}
+                  </button>
+                  <button onClick={handleNextTrack} className="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white cursor-pointer">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                  </button>
+                  <button onClick={handleStopMusic} className="w-7 h-7 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 cursor-pointer">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                  </button>
+                  <button onClick={handleToggleMute} className="w-7 h-7 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 cursor-pointer">
+                    {isMusicMuted ? (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                    ) : (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              </div>
+            )}
+          </div>
           <HoverLabel label="Agent">
             <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => setIsChatOpen(true)} className="relative w-14 h-14 rounded-full bg-gradient-to-br from-accent/25 to-green-600/20 glass-blur border border-accent/30 text-accent flex items-center justify-center cursor-pointer transition-all duration-300 animate-pulse-glow hover:from-accent/45 hover:to-green-500/30 hover:border-accent/60 hover:shadow-[0_0_30px_rgba(212,252,212,0.35)]">
               <span className="absolute inset-0 rounded-full border border-accent/10 animate-spin-slow" style={{ borderTopColor: 'rgba(212,252,212,0.4)' }} />
@@ -482,143 +611,16 @@ function App() {
       <ChatOverlay isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} onPlayMusic={handlePlayMusic} />
 
       {/* Persistent YouTube player container - NEVER unmounts */}
-      <motion.div
+      <div
         ref={ytContainerRef}
-        initial={false}
-        animate={currentTrack && !isMusicOpen
-          ? { opacity: 1, y: 0, scale: 1, width: 440, height: 190 }
-          : { opacity: 0, y: 40, scale: 0.9, width: 0, height: 0 }
-        }
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed bottom-6 left-6 z-[9997] rounded-3xl overflow-hidden border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] pointer-events-auto"
-        style={{ pointerEvents: currentTrack && !isMusicOpen ? 'auto' : 'none' }}
+        className={`fixed pointer-events-auto overflow-hidden ${
+          currentTrack && !isMusicOpen
+            ? 'inset-0 z-[-2] !w-full !h-full !rounded-none !border-0 !shadow-none opacity-100'
+            : 'inset-0 z-[-2] opacity-0 pointer-events-none'
+        }`}
       >
-        <div id="yt-player-container" className="w-full h-full" />
-        {/* Mini-player overlay on top of the iframe */}
-        <div className="absolute inset-0 flex flex-col bg-black/90 backdrop-blur-2xl">
-          {currentTrack && (
-            <>
-              {/* Top row: thumbnail + track info + expand */}
-              <div className="flex items-center gap-4 px-5 pt-4 pb-2">
-                <img
-                  src={currentTrack.thumbnail}
-                  alt={currentTrack.title}
-                  className="w-14 h-14 rounded-2xl object-cover shrink-0 ring-1 ring-white/10 shadow-lg"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white truncate">{currentTrack.title}</p>
-                  <p className="text-xs text-white/40 truncate mt-0.5">{currentTrack.channel}</p>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsMusicOpen(true)}
-                  className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 text-white/60 flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/30 transition-colors cursor-pointer shrink-0"
-                  title="Expand"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                </motion.button>
-              </div>
-
-              {/* Bottom row: progress bar + transport controls */}
-              <div className="px-5 pb-4 pt-1 flex items-center gap-3">
-                {/* Time: current */}
-                <span className="text-[11px] text-white/30 tabular-nums w-9 text-right shrink-0">
-                  {playerTime.duration > 0 ? formatSeconds(playerTime.current) : '0:00'}
-                </span>
-
-                {/* Progress bar */}
-                <div className="flex-1">
-                  <div className="relative h-1.5 rounded-full bg-white/10 group cursor-pointer"
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      const pct = (e.clientX - rect.left) / rect.width
-                      handleSeek(Math.max(0, Math.min(1, pct)) * playerTime.duration)
-                    }}
-                  >
-                    <div
-                      className="absolute left-0 top-0 h-full rounded-full bg-accent/70 transition-[width] duration-200"
-                      style={{ width: `${playerTime.duration > 0 ? (playerTime.current / playerTime.duration) * 100 : 0}%` }}
-                    />
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-accent shadow-[0_0_8px_rgba(212,252,212,0.5)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                      style={{ left: `calc(${playerTime.duration > 0 ? (playerTime.current / playerTime.duration) * 100 : 0}% - 6px)` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Time: duration */}
-                <span className="text-[11px] text-white/30 tabular-nums w-9 shrink-0">
-                  {playerTime.duration > 0 ? formatSeconds(playerTime.duration) : '0:00'}
-                </span>
-              </div>
-
-              {/* Transport row */}
-              <div className="px-5 pb-4 flex items-center justify-center gap-4">
-                {/* Stop */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleStopMusic}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
-                  title="Stop"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-                </motion.button>
-
-                {/* Prev */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handlePrevTrack}
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
-                </motion.button>
-
-                {/* Play/Pause */}
-                <motion.button
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.92 }}
-                  onClick={handleToggleMusicPlay}
-                  className="w-12 h-12 rounded-full bg-white/10 border border-white/15 text-white flex items-center justify-center hover:bg-accent hover:text-primary hover:border-accent/30 transition-all cursor-pointer shrink-0"
-                >
-                  {isMusicPlaying ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                  )}
-                </motion.button>
-
-                {/* Next */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleNextTrack}
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
-                </motion.button>
-
-                {/* Mute */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleToggleMute}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 transition-colors cursor-pointer shrink-0"
-                  title={isMusicMuted ? 'Unmute' : 'Mute'}
-                >
-                  {isMusicMuted ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-                  )}
-                </motion.button>
-              </div>
-            </>
-          )}
-        </div>
-      </motion.div>
+        <div id="yt-mini-container" className="w-full h-full" />
+      </div>
 
       {/* Music Overlay */}
       <MusicOverlay

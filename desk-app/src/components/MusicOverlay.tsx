@@ -29,6 +29,8 @@ const MOODS: MoodOption[] = [
   { id: 'meditate', label: 'Meditate', emoji: '🧘', gradient: 'from-rose-500/20 to-pink-500/10' },
 ]
 
+const AMBIENT_MOODS = new Set(['stressed', 'anxious', 'tired', 'sad', 'sleep', 'meditate'])
+
 interface MusicOverlayProps {
   isOpen: boolean
   onClose: () => void
@@ -36,7 +38,7 @@ interface MusicOverlayProps {
   isPlaying: boolean
   isMuted: boolean
   playerTime: { current: number; duration: number }
-  onPlayTrack: (track: Video, trackList?: Video[], index?: number) => void
+  onPlayTrack: (track: Video, trackList?: Video[], index?: number, mood?: string) => void
   onTogglePlay: () => void
   onToggleMute: () => void
   onSeek: (seconds: number) => void
@@ -58,18 +60,6 @@ function MusicOverlay({ isOpen, onClose, currentTrack, isPlaying, isMuted, playe
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const seekRef = useRef<HTMLInputElement>(null)
-  const hasAutoFetched = useRef(false)
-
-  useEffect(() => {
-    if (isOpen && !hasAutoFetched.current && tracks.length === 0) {
-      hasAutoFetched.current = true
-      const defaultMood = MOODS.find(m => m.id === 'focus') || MOODS[0]
-      fetchMoodMusic(defaultMood)
-    }
-    if (!isOpen) {
-      hasAutoFetched.current = false
-    }
-  }, [isOpen])
 
   const isTrackActive = (track: Video) => currentTrack?.video_id === track.video_id
   const progress = playerTime.duration > 0 ? (playerTime.current / playerTime.duration) * 100 : 0
@@ -79,10 +69,11 @@ function MusicOverlay({ isOpen, onClose, currentTrack, isPlaying, isMuted, playe
     setLoading(true)
     setTracks([])
     try {
-      const res = await axios.get(`${API_URL}/music/mood/${mood.id}`, { params: { max_results: 12 } })
+      const endpoint = AMBIENT_MOODS.has(mood.id) ? 'ambient' : 'mood'
+      const res = await axios.get(`${API_URL}/music/${endpoint}/${mood.id}`, { params: { max_results: 12 } })
       setTracks(res.data.videos)
       if (res.data.videos.length > 0 && !currentTrack) {
-        onPlayTrack(res.data.videos[0], res.data.videos, 0)
+        onPlayTrack(res.data.videos[0], res.data.videos, 0, mood.id)
       }
     } catch (err) {
       console.error('Failed to fetch music:', err)
@@ -380,7 +371,7 @@ function MusicOverlay({ isOpen, onClose, currentTrack, isPlaying, isMuted, playe
                         return (
                           <button
                             key={track.video_id}
-                            onClick={() => onPlayTrack(track, tracks, i)}
+                            onClick={() => onPlayTrack(track, tracks, i, selectedMood?.id)}
                             className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all text-left cursor-pointer group ${
                               active ? 'bg-accent/10 border border-accent/20' : 'hover:bg-white/[0.04] border border-transparent'
                             }`}
