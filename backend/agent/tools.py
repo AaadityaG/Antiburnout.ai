@@ -234,32 +234,60 @@ def get_break_tip(focus_area: Optional[str] = None, auto_apply: bool = False) ->
 
 
 @tool
-def recommend_music(mood: str, auto_play: bool = False) -> dict:
-    """Recommend calming music based on the user's current mood or emotional state. Call this when the user mentions how they're feeling (stressed, anxious, tired, sad, etc.), asks for music, or when you think music could help them relax. The mood parameter must be one of: stressed, anxious, tired, sad, focus, happy, sleep, meditate. You can also pass common synonyms like "delightful", "exhausted", "worried" etc. and they will be mapped automatically.
+def recommend_music(mood: str = "", query: str = "", auto_play: bool = False) -> dict:
+    """Recommend music. ALWAYS call this when the user asks to play, find, or suggest music. NEVER just say you can't help — always call this tool.
 
-    Set auto_play=True when the user explicitly asks to PLAY music (e.g. "play some happy music", "put on focus music", "play rain sounds"). In this case, start playing immediately without asking.
+    Use `query` for specific music types (genre, style, artist, culture, instrument). Examples: query="pooja music", query="lofi from japan", query="classical violin", query="80s synthwave".
 
-    Set auto_play=False when the user asks to FIND, SEARCH, SUGGEST, or BROWSE music (e.g. "can you find some focus music", "what music do you recommend", "show me options"). In this case, present the recommendation with a play button for the user to confirm."""
-    mood_lower = mood.lower().strip()
-    if mood_lower not in MOOD_MUSIC_MAP:
-        mood_lower = MOOD_SYNONYMS.get(mood_lower, mood_lower)
-    if mood_lower not in MOOD_MUSIC_MAP:
-        valid = ", ".join(MOOD_MUSIC_MAP.keys())
+    Use `mood` for feelings/emotions: stressed, anxious, tired, sad, focus, happy, sleep, meditate.
+
+    Set auto_play=true when user wants to PLAY music. auto_play=false for FIND/SUGGEST/BROWSE."""
+
+    if query and not mood:
         return {
-            "success": False,
-            "message": f"Unknown mood '{mood}'. Valid moods: {valid}",
+            "success": True,
+            "query": query,
+            "mood": None,
+            "emoji": "\U0001f3b5",
+            "label": query.title(),
+            "description": query,
+            "auto_play": auto_play,
+            "message": f"Playing {query} for you." if auto_play else f"Here's what I found for '{query}'. Would you like me to play it?",
         }
-    info = MOOD_MUSIC_MAP[mood_lower]
-    if auto_play:
-        message = f"Playing {info['label'].lower()} music for you — {info['description'].lower()}."
-    else:
-        message = f"I found some {info['label'].lower()} music for you — {info['description'].lower()}. Would you like me to play it?"
+
+    if mood and not query:
+        mood_lower = mood.lower().strip()
+        if mood_lower not in MOOD_MUSIC_MAP:
+            mood_lower = MOOD_SYNONYMS.get(mood_lower, mood_lower)
+        if mood_lower in MOOD_MUSIC_MAP:
+            info = MOOD_MUSIC_MAP[mood_lower]
+            if auto_play:
+                message = f"Playing {info['label'].lower()} music for you — {info['description'].lower()}."
+            else:
+                message = f"I found some {info['label'].lower()} music for you — {info['description'].lower()}. Would you like me to play it?"
+            return {
+                "success": True,
+                "mood": mood_lower,
+                "emoji": info["emoji"],
+                "label": info["label"],
+                "description": info["description"],
+                "auto_play": auto_play,
+                "message": message,
+            }
+
+    if mood and query:
+        return {
+            "success": True,
+            "query": query,
+            "mood": mood,
+            "emoji": "\U0001f3b5",
+            "label": mood.title(),
+            "description": query,
+            "auto_play": auto_play,
+            "message": f"Playing {query} for you." if auto_play else f"Here's what I found for '{query}'. Would you like me to play it?",
+        }
+
     return {
-        "success": True,
-        "mood": mood_lower,
-        "emoji": info["emoji"],
-        "label": info["label"],
-        "description": info["description"],
-        "auto_play": auto_play,
-        "message": message,
+        "success": False,
+        "message": "I need to know what music you'd like. Tell me a mood (stressed, happy, etc.) or a specific type (lofi, classical, jazz, etc.).",
     }

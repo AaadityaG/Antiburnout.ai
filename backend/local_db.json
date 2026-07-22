@@ -191,10 +191,147 @@
           "model": "openai/gpt-4o-mini",
           "provider_key": "model_1",
           "timestamp": "2026-07-22 06:51:11.172722"
+        },
+        {
+          "message": "play some music for the romance",
+          "response": "\ud83d\ude0a Playing happy music for you \u2014 uplifting acoustic vibes. Enjoy the romantic atmosphere!",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 08:02:55.150049"
+        },
+        {
+          "message": "play some music for celebrations",
+          "response": "\ud83d\ude0a Playing happy music for you \u2014 uplifting acoustic vibes for your celebration. Enjoy the festivities!",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 08:07:00.197114"
+        },
+        {
+          "message": "suggest me some peacefull lofi music",
+          "response": "I've found some peaceful lofi music for you \u2014 zen peace for mindfulness. Would you like me to play it?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 08:11:16.173521"
+        },
+        {
+          "message": "suggest me some peacefull lofi music from japan",
+          "response": "I've found some peaceful lofi music for you \u2014 zen peace for mindfulness. Would you like me to play it?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 08:11:51.212419"
+        },
+        {
+          "message": "suggest me some peacefull lofi music from japan",
+          "response": "It seems there was an issue retrieving the peaceful lofi music from Japan. Would you like me to suggest music based on a mood instead? If so, please let me know your mood!",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 08:14:29.187073"
+        },
+        {
+          "message": "peacuful",
+          "response": "I found some peaceful music for you \u2014 zen peace for mindfulness. Would you like me to play it?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 08:15:09.602787"
         }
       ],
       "created_at": "2026-07-22 06:44:18.715620",
-      "updated_at": "2026-07-22 06:51:11.172725"
+      "updated_at": "2026-07-22 08:15:09.602796"
+    },
+    {
+      "id": "f65c6dfb-a584-418c-a486-ba1e19f34116",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "suggest me some peacefull lofi music from japan",
+          "response": "I found some peaceful lofi music from Japan for you \u2014 it's perfect for mindfulness. Would you like me to play it?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 08:16:53.796620"
+        },
+        {
+          "message": "play some pooja music",
+          "response": "I need to know how you're feeling to recommend music. Could you share your mood? For example, are you feeling happy, stressed, or something else?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 08:17:46.621395"
+        }
+      ],
+      "created_at": "2026-07-22 08:16:53.796627",
+      "updated_at": "2026-07-22 08:17:46.621410"
+    },
+    {
+      "id": "9cfee520-c93d-40fe-946f-ee188220bd13",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "play some pooja music",
+          "response": "It appears I'm unable to play the pooja music directly due to a technical issue. Would you like to specify a mood instead, such as \"calm\" or \"peaceful,\" so I can find suitable music for you?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 08:20:16.619163"
+        },
+        {
+          "message": "hi",
+          "response": "Playing pooja music for you.",
+          "model": "meta-llama/llama-3.1-70b-instruct",
+          "provider_key": "model_3",
+          "timestamp": "2026-07-22 08:23:24.984759"
+        },
+        {
+          "message": "play some chinese dance music",
+          "response": "Playing chinese dance music for you.",
+          "model": "meta-llama/llama-3.1-70b-instruct",
+          "provider_key": "model_3",
+          "timestamp": "2026-07-22 08:24:15.434576"
+        }
+      ],
+      "created_at": "2026-07-22 08:20:16.619174",
+      "updated_at": "2026-07-22 08:24:15.434587"
+    },
+    {
+      "id": "1e3cf92f-8f9e-4cac-9998-39dd05ef47e4",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "hi suggest me some silent ancient mantra",
+          "response": "I found some music related to \"silent ancient mantra.\" Would you like me to play it for you?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 10:43:01.642131"
+        },
+        {
+          "message": "play some chinese mantra peacefull music with",
+          "response": "Playing Chinese mantra peaceful music for you. Enjoy the tranquility! \ud83c\udfb5",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 10:52:45.898719"
+        },
+        {
+          "message": "play some feel rich music",
+          "response": "Playing happy music for you \u2014 uplifting acoustic vibes. Enjoy! \ud83d\ude0a",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 10:53:15.080283"
+        }
+      ],
+      "created_at": "2026-07-22 10:43:01.642134",
+      "updated_at": "2026-07-22 10:53:15.080288"
+    },
+    {
+      "id": "8a3bfb20-7140-4e45-a2dd-6e6bf5a5f4f0",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "I'm feeling tired",
+          "response": "It sounds like you could use a break. Taking some time to relax can really help. Here's a wellness tip for you: try a gentle stretch or take a short walk outside to refresh your mind and body. \n\nWould you like me to find a calming music playlist to help you relax?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-22 10:54:07.984709"
+        }
+      ],
+      "created_at": "2026-07-22 10:54:07.984718",
+      "updated_at": "2026-07-22 10:54:07.984723"
     }
   ],
   "activity": [
@@ -413,12 +550,33 @@
           "completed": false,
           "skipped": true,
           "timestamp": "2026-07-22 07:07:02.925246"
+        },
+        {
+          "session_duration": 1080,
+          "target_duration": 1080,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-22 07:47:36.210265"
+        },
+        {
+          "session_duration": 1080,
+          "target_duration": 1080,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-22 08:06:05.663041"
+        },
+        {
+          "session_duration": 1080,
+          "target_duration": 1080,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-22 08:24:23.186469"
         }
       ],
-      "total_session_duration": 1784704262,
-      "total_breaks_taken": 5,
+      "total_session_duration": 1784707502,
+      "total_breaks_taken": 8,
       "total_breaks_skipped": 1,
-      "last_updated": "2026-07-22 07:07:02.925250"
+      "last_updated": "2026-07-22 08:24:23.186479"
     }
   ]
 }

@@ -12,7 +12,7 @@ const API_URL = import.meta.env.VITE_API_URL
 interface ChatOverlayProps {
   isOpen: boolean
   onClose: () => void
-  onPlayMusic?: (mood: string) => void
+  onPlayMusic?: (mood: string, query?: string) => void
 }
 
 function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
@@ -99,7 +99,7 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
         }
         if (rec.action_type === 'auto_play_music') {
           processedAutoRef.current.add(rec.id)
-          onPlayMusic?.(rec.mood)
+          onPlayMusic?.(rec.mood, rec.query)
         }
       }
     }
@@ -748,7 +748,7 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                                           dismissBtn.className = 'flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
                                         }
                                       }
-                                      onPlayMusic?.(rec.mood)
+                                      onPlayMusic?.(rec.mood, rec.query)
                                     }}
                                   >
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>

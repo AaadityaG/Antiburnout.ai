@@ -28,14 +28,62 @@ class MusicSearchResponse(BaseModel):
 
 
 MOOD_QUERIES = {
-    "stressed": "calming rain sounds relaxation 1 hour",
-    "anxious": "soft piano music anxiety relief relaxing",
-    "tired": "nature sounds recharge energy ambient",
-    "sad": "gentle comforting music peaceful melodies",
-    "focus": "lo-fi beats study focus concentration 1 hour",
-    "happy": "uplifting acoustic feel good vibes music",
-    "sleep": "sleep music deep calm ambient 1 hour",
-    "meditate": "meditation music zen calm peaceful 30 min",
+    "stressed": [
+        "calming rain sounds relaxation 1 hour",
+        "gentle piano stress relief relaxing",
+        "soft ambient music calm down 1 hour",
+        "nature sounds river peaceful relaxing",
+        "lo-fi chill beats stress free music",
+    ],
+    "anxious": [
+        "soft piano music anxiety relief relaxing",
+        "calming ambient drone peaceful 1 hour",
+        "gentle guitar soothing anxiety music",
+        "rain on window sounds calming 1 hour",
+        "binaural beats anxiety relief peaceful",
+    ],
+    "tired": [
+        "nature sounds recharge energy ambient",
+        "uplifting acoustic guitar energizing",
+        "light classical music refresh mood",
+        "morning birds chirping peaceful ambient",
+        "gentle electronic uplifting vibes",
+    ],
+    "sad": [
+        "gentle comforting music peaceful melodies",
+        "warm piano emotional healing music",
+        "soft strings comforting sadness",
+        "hopeful ambient music uplifting 1 hour",
+        "calm acoustic guitar gentle vibes",
+    ],
+    "focus": [
+        "lo-fi beats study focus concentration 1 hour",
+        "deep focus ambient electronic 1 hour",
+        "classical piano study music concentration",
+        "chill hop beats productive coding music",
+        "minimal ambient focus soundtrack 1 hour",
+    ],
+    "happy": [
+        "uplifting acoustic feel good vibes music",
+        "cheerful happy indie folk music",
+        "feel good pop acoustic covers",
+        "bright piano happy melody music",
+        "summer vibes uplifting guitar music",
+    ],
+    "sleep": [
+        "sleep music deep calm ambient 1 hour",
+        "delta waves sleep deep rest ambient",
+        "gentle rain sleep sounds 1 hour",
+        "soft drone sleep meditation music",
+        "peaceful night sounds sleep well",
+    ],
+    "meditate": [
+        "meditation music zen calm peaceful 30 min",
+        "tibetan singing bowls meditation",
+        "om chanting meditation peaceful",
+        "nature sounds meditation garden ambient",
+        "deep meditation drone calm music",
+    ],
 }
 
 AMBIENT_MOOD_QUERIES = {
@@ -95,7 +143,8 @@ async def search_music(
 
 @router.get("/mood/{mood}", response_model=MusicSearchResponse)
 async def get_mood_music(mood: str, max_results: int = Query(6, ge=1, le=20)):
-    query = MOOD_QUERIES.get(mood.lower(), f"{mood} relaxing music 1 hour")
+    queries = MOOD_QUERIES.get(mood.lower(), [f"{mood} relaxing music 1 hour"])
+    query = random.choice(queries)
     videos = await _youtube_search(query, max_results)
     return MusicSearchResponse(query=query, videos=videos)
 

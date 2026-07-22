@@ -271,10 +271,16 @@ function App() {
     setPlaylistIndex(-1)
   }, [])
 
-  const handlePlayMusic = useCallback(async (mood: string) => {
+  const handlePlayMusic = useCallback(async (mood: string, query?: string) => {
     try {
-      const endpoint = AMBIENT_MOODS.has(mood) ? 'ambient' : 'mood'
-      const res = await fetch(`${API_URL}/music/${endpoint}/${mood}?max_results=1`)
+      let url: string
+      if (query) {
+        url = `${API_URL}/music/search?q=${encodeURIComponent(query)}&max_results=1`
+      } else {
+        const endpoint = AMBIENT_MOODS.has(mood) ? 'ambient' : 'mood'
+        url = `${API_URL}/music/${endpoint}/${mood}?max_results=1`
+      }
+      const res = await fetch(url)
       const data = await res.json()
       if (data.videos && data.videos.length > 0) {
         const track = data.videos[0]

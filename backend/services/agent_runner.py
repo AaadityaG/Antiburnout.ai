@@ -66,18 +66,22 @@ async def run_agent(
                             "execute_params": rec["execute_params"],
                             "created_at": datetime.utcnow().isoformat(),
                         })
-                if isinstance(content, dict) and content.get("success") and content.get("mood"):
+                if isinstance(content, dict) and content.get("success") and (content.get("mood") or content.get("query")):
                     is_auto = content.get("auto_play", False)
-                    recommendations.append({
-                        "id": f"music_{content['mood']}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                    rec = {
+                        "id": f"music_{content.get('mood') or 'search'}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
                         "type": "music",
-                        "title": f"{content['emoji']} Play {content['label']} Music",
+                        "title": f"{content.get('emoji', '\U0001f3b5')} Play {content['label']} Music",
                         "message": content["message"],
                         "priority": 3,
                         "action_type": "auto_play_music" if is_auto else "play_music",
-                        "mood": content["mood"],
                         "created_at": datetime.utcnow().isoformat(),
-                    })
+                    }
+                    if content.get("query"):
+                        rec["query"] = content["query"]
+                    else:
+                        rec["mood"] = content["mood"]
+                    recommendations.append(rec)
                 if isinstance(content, dict) and content.get("tip") and content.get("auto_apply"):
                     recommendations.append({
                         "id": f"break_{content.get('category', 'general')}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
