@@ -273,18 +273,48 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
   }
 
   const toggleSearchMode = () => {
-    setSemanticSearch(prev => {
-      if (prev) dispatch(clearSearchResults())
-      return !prev
-    })
-    setSearchQuery('')
+    const newSemanticSearch = !semanticSearch
+    if (semanticSearch && !newSemanticSearch) {
+      dispatch(clearSearchResults())
+    }
+    setSemanticSearch(newSemanticSearch)
+    if (searchQuery.trim() && newSemanticSearch && token) {
+      dispatch(searchChatHistory({ token, query: searchQuery.trim(), k: 5 }))
+    }
   }
 
-  const loadSearchResult = (sessionId: string) => {
-    loadSessionMessages(sessionId)
+  const loadSearchResult = (sessionId: string, content: string) => {
+    const parsed = content.split('\n').reduce<{ role: 'user' | 'assistant'; content: string }[]>((acc, line) => {
+      if (line.startsWith('User: ')) {
+        acc.push({ role: 'user', content: line.slice(6) })
+      } else if (line.startsWith('AI: ')) {
+        acc.push({ role: 'assistant', content: line.slice(4) })
+      } else if (acc.length > 0) {
+        acc[acc.length - 1].content += '\n' + line
+      }
+      return acc
+    }, [])
+
+    setMessages(parsed.length > 0 ? parsed : [{ role: 'assistant', content }])
+    setActiveSessionId(sessionId)
     setSemanticSearch(false)
     dispatch(clearSearchResults())
     setSearchQuery('')
+    loadSessionMessages(sessionId)
+  }
+
+  const highlightMatch = (text: string, query: string) => {
+    if (!query.trim()) return text
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`(${escapedQuery})`, 'gi')
+    const parts = text.split(regex)
+    return parts.map((part, i) =>
+      i % 2 === 1 ? (
+        <mark key={i} className="bg-accent/30 text-white rounded px-0.5">{part}</mark>
+      ) : (
+        part
+      )
+    )
   }
 
   const filteredSessions = useMemo(() => {
@@ -391,7 +421,7 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                   {searchResults.map((result, idx) => (
                     <button
                       key={idx}
-                      onClick={() => loadSearchResult(result.session_id)}
+                      onClick={() => loadSearchResult(result.session_id, result.content)}
                       className="w-full text-left p-3 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-accent/20 cursor-pointer transition-colors"
                     >
                       <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -402,7 +432,7 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                           {new Date(result.timestamp).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-xs text-white/60 line-clamp-3 leading-relaxed">{result.content}</p>
+                        <p className="text-xs text-white/60 line-clamp-3 leading-relaxed">{highlightMatch(result.content, searchQuery)}</p>
                     </button>
                   ))}
                 </div>
@@ -441,7 +471,12 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm text-white/80 truncate">{session.first_message || 'New conversation'}</p>
+                              <div className="flex items-center gap-2">
+                                {activeSessionId === session.id && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+                                )}
+                                <p className="text-sm text-white/80 truncate">{session.first_message || 'New conversation'}</p>
+                              </div>
                               <p className="text-xs text-white/30 mt-1 truncate">{session.last_message || ''}</p>
                             </div>
                             <div className="shrink-0 flex items-center gap-1.5">
