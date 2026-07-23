@@ -69,7 +69,15 @@ async def get_chat_history(token: str, limit: int = 20):
 
 @router.post("/search", response_model=SearchResponse)
 async def search_chat_history(token: str, request: SearchRequest):
-    """Search chat history using semantic similarity"""
+    """Search chat history using semantic similarity.
+
+    Finds conversations that are meaningfully related to the query,
+    not just keyword matches. Uses vector embeddings stored in ChromaDB.
+
+    Handles chunked documents: when a long conversation was split into
+    multiple chunks, this endpoint reconstructs the full conversation
+    before returning it.
+    """
     try:
         payload = verify_token(token)
         if not payload:
@@ -80,19 +88,58 @@ async def search_chat_history(token: str, request: SearchRequest):
         from rag.vector_store import get_user_collection
         collection = get_user_collection(user_id)
 
+        # Fetch more results than requested (3x) because chunked documents
+        # may produce multiple hits from the same conversation.
+        # We deduplicate by parent_id and return only the top k unique conversations.
+        search_k = max((request.k or 2) * 3, 10)
         results = collection.similarity_search_with_relevance_scores(
             query=request.query,
-            k=request.k or 2,
+            k=search_k,
         )
 
+        seen_parents = set()
         formatted = []
         for doc, score in results:
-            formatted.append({
-                "content": doc.page_content,
-                "session_id": doc.metadata.get("session_id", ""),
-                "timestamp": doc.metadata.get("timestamp", ""),
-                "score": round(score, 4),
-            })
+            parent_id = doc.metadata.get("parent_id", "")
+            total_chunks = doc.metadata.get("total_chunks", 1)
+
+            if total_chunks > 1 and parent_id:
+                # This chunk belongs to a multi-chunk document.
+                # Skip if we already processed another chunk from the same parent.
+                if parent_id in seen_parents:
+                    continue
+                seen_parents.add(parent_id)
+
+                # Retrieve ALL chunks from the same parent document
+                all_chunks = collection.get(
+                    where={"parent_id": parent_id},
+                )
+
+                # Sort chunks by chunk_index and combine into full document
+                chunk_map = {}
+                for meta, content in zip(all_chunks["metadatas"], all_chunks["documents"]):
+                    idx = meta.get("chunk_index", 0)
+                    chunk_map[idx] = content
+                combined = "\n".join(chunk_map[i] for i in sorted(chunk_map.keys()))
+
+                formatted.append({
+                    "content": combined,
+                    "session_id": doc.metadata.get("session_id", ""),
+                    "timestamp": doc.metadata.get("timestamp", ""),
+                    "score": round(score, 4),
+                })
+            else:
+                # Single-chunk document (short exchange) — return as-is
+                formatted.append({
+                    "content": doc.page_content,
+                    "session_id": doc.metadata.get("session_id", ""),
+                    "timestamp": doc.metadata.get("timestamp", ""),
+                    "score": round(score, 4),
+                })
+
+            # Stop once we have enough unique conversations
+            if len(formatted) >= (request.k or 2):
+                break
 
         return SearchResponse(
             query=request.query,

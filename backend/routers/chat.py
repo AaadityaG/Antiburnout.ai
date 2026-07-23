@@ -108,23 +108,54 @@ async def send_message(token: str, request: ChatRequest):
         except Exception as e:
             print(f"Warning: Failed to save chat history: {e}")
 
+        # Store conversation in vector DB for semantic search.
+        # This is separate from the structured chat_history_db —
+        # vector DB enables "find similar conversations" while
+        # structured DB enables "list all sessions" and "get session messages".
         try:
-            from rag.vector_store import get_user_collection
+            from rag.vector_store import get_user_collection, chunk_text
             from datetime import datetime as _dt
             collection = get_user_collection(user_id)
+
+            # Combine user message and AI response into one document
             doc_text = f"User: {request.message}\nAI: {ai_response}"
-            doc_id = f"{session_id}_{_dt.utcnow().strftime('%Y%m%d%H%M%S%f')}"
-            collection.add_texts(
-                texts=[doc_text],
-                ids=[doc_id],
-                metadatas=[{
+            timestamp = _dt.utcnow().isoformat()
+
+            # Create a unique base ID for this conversation turn.
+            # Each chunk will get: {base_id}_c0, {base_id}_c1, etc.
+            base_id = f"{session_id}_{_dt.utcnow().strftime('%Y%m%d%H%M%S%f')}"
+
+            # Split long text into overlapping chunks (short text stays as one piece)
+            chunks = chunk_text(doc_text)
+
+            # Batch all chunks for a single add_texts call (more efficient)
+            texts_to_add = []
+            ids_to_add = []
+            metadatas_to_add = []
+
+            for i, chunk in enumerate(chunks):
+                texts_to_add.append(chunk)
+                ids_to_add.append(f"{base_id}_c{i}")
+                metadatas_to_add.append({
                     "user_id": user_id,
                     "session_id": session_id,
-                    "timestamp": _dt.utcnow().isoformat(),
+                    "timestamp": timestamp,
                     "tools_used": ",".join(tools_used) if tools_used else "",
-                }],
+                    # Chunk reconstruction metadata — used by search to
+                    # reassemble all chunks from the same parent document
+                    "chunk_index": i,           # position of this chunk (0, 1, 2...)
+                    "total_chunks": len(chunks), # total chunks in this document
+                    "parent_id": base_id,        # links all chunks to same parent
+                })
+
+            collection.add_texts(
+                texts=texts_to_add,
+                ids=ids_to_add,
+                metadatas=metadatas_to_add,
             )
         except Exception as e:
+            # Non-blocking: if vector DB fails, chat still works,
+            # just semantic search won't find this conversation
             print(f"Warning: Failed to store in vector DB: {e}")
 
         return ChatResponse(

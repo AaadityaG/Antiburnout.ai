@@ -776,12 +776,26 @@
           "completed": false,
           "skipped": true,
           "timestamp": "2026-07-23 14:24:22.306298"
+        },
+        {
+          "session_duration": 575,
+          "target_duration": 60,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-23 14:34:58.274416"
+        },
+        {
+          "session_duration": 603,
+          "target_duration": 60,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-23 14:46:02.558482"
         }
       ],
-      "total_session_duration": 2222,
-      "total_breaks_taken": 4,
-      "total_breaks_skipped": 4,
-      "last_updated": "2026-07-23 14:24:22.306304"
+      "total_session_duration": 3400,
+      "total_breaks_taken": 6,
+      "total_breaks_skipped": 6,
+      "last_updated": "2026-07-23 14:46:02.558486"
     }
   ]
 }
