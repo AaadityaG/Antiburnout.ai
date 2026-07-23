@@ -536,6 +536,21 @@
       ],
       "created_at": "2026-07-23 15:39:20.376955",
       "updated_at": "2026-07-23 15:44:28.328967"
+    },
+    {
+      "id": "0d5d688e-7f8a-4f4b-b87e-6d97462a4549",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "Play some calming music",
+          "response": "Playing meditate music for you \u2014 zen peace for mindfulness. \ud83e\uddd8 Enjoy your calming break!",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-23 16:39:23.960271"
+        }
+      ],
+      "created_at": "2026-07-23 16:39:23.960302",
+      "updated_at": "2026-07-23 16:39:23.960435"
     }
   ],
   "activity": [
@@ -869,12 +884,26 @@
           "completed": true,
           "skipped": false,
           "timestamp": "2026-07-23 15:13:36.440847"
+        },
+        {
+          "session_duration": 1800,
+          "target_duration": 1800,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-23 15:51:23.133452"
+        },
+        {
+          "session_duration": 1800,
+          "target_duration": 1800,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-23 16:27:05.806602"
         }
       ],
-      "total_session_duration": 4690,
-      "total_breaks_taken": 10,
+      "total_session_duration": 8290,
+      "total_breaks_taken": 12,
       "total_breaks_skipped": 8,
-      "last_updated": "2026-07-23 15:13:36.440863"
+      "last_updated": "2026-07-23 16:27:05.806607"
     }
   ]
 }

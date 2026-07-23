@@ -1,138 +1,94 @@
+<div align="center">
+
 # AntiBurnout.ai
 
 AI-powered desktop wellness assistant that prevents digital burnout during long screen sessions.
 
-## Quick Start
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)](#)
+[![Node.js 18+](https://img.shields.io/badge/Node.js-18+-green.svg)](#)
+
+</div>
+
+<p align="center">
+  <img src="desk-app/public/preview.gif" width="80%" alt="AntiBurnout Preview" />
+</p>
+
+---
+
+## Quick Setup
 
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- MongoDB Atlas (or it falls back to local JSON)
+- MongoDB Atlas (optional — falls back to local JSON)
 
 ### Backend
+
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate          # Windows
+venv\Scripts\activate              # Windows
+# source venv/bin/activate         # macOS/Linux
 pip install -r requirements.txt
-
-# Create .env from example
-copy .env.example .env
-# Edit .env with your MONGODB_URI and JWT_SECRET
-
-python main.py
-# Runs on http://localhost:8010
+copy .env.example .env             # Edit with your values
+python main.py                     # http://localhost:8000
 ```
 
 ### Frontend
+
 ```bash
 cd desk-app
 npm install
-npm run dev
-# Opens Electron app
+copy .env.example .env
+npm run dev                        # Opens Electron app
 ```
+
+On first launch, configure your **OpenRouter API key** in Profile Settings.
+
+---
 
 ## Environment Variables
 
+### Backend (`backend/.env`)
+
 ```env
-# backend/.env
-MONGODB_URI=mongodb+srv://...
-MONGODB_DB_NAME=app_local
-JWT_SECRET=your-secret-key
-YOUTUBE_API_KEY=AIza...
+SECRET_KEY=your-secret-key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+MONGODB_URI=mongodb+srv://...       # optional
+MONGODB_DB_NAME=antiburnout         # optional
+YTKEY=AIza...                       # optional (for music search)
 ```
 
-## Features
+### Frontend (`desk-app/.env`)
 
-### AI Chat Agent
-- Wellness coach powered by LangGraph agent
-- 5 tools: settings optimization, activity tracking, break tips, music, settings
-- Auto-execute mode: applies brightness/volume changes directly
-- BYOK: users bring their own OpenRouter API key
-
-### Break Timer
-- Configurable interval and duration
-- Auto-start on app launch
-- Full-screen break overlay with exercises
-- System tray integration
-
-### System Control
-- Reads/writes actual system brightness (WMI)
-- Reads/writes system volume (native module)
-- Night mode toggle (Windows Registry)
-
-### Music Player
-- Mood-based YouTube music recommendations
-- 8 moods: stressed, anxious, tired, sad, focus, happy, sleep, meditate
-- Embedded player with playback controls
-
-### Chat History Search
-- Semantic search using ChromaDB
-- Embeds every conversation (all-MiniLM-L6-v2)
-- Star icon toggle in sidebar for AI-powered search
-
-## Project Structure
-
-```
-antiburnout.ai/
-├── backend/
-│   ├── main.py              # FastAPI entry
-│   ├── auth.py              # JWT
-│   ├── db/                  # Database layer
-│   │   ├── connection.py    # Mongo + JSON fallback
-│   │   ├── users.py
-│   │   ├── settings.py
-│   │   ├── chat_history.py
-│   │   └── activity.py
-│   ├── services/            # Business logic
-│   │   ├── encryption.py    # API key encrypt/decrypt
-│   │   └── agent_runner.py  # LangGraph orchestration
-│   ├── routers/             # API endpoints (8 routers, 20 endpoints)
-│   ├── agent/               # AI agent
-│   │   ├── graph.py         # LangGraph StateGraph
-│   │   └── tools.py         # 5 LangChain tools
-│   └── rag/                 # RAG
-│       └── vector_store.py  # ChromaDB
-├── desk-app/                # Electron + React
-│   ├── electron/            # Main process (IPC, tray, timer)
-│   └── src/                 # React app
-│       ├── components/      # UI overlays
-│       └── store/           # Redux slices
+```env
+VITE_API_URL=http://localhost:8000
 ```
 
-## API Quick Reference
+---
 
-| Endpoint | Method | What |
-|----------|--------|------|
-| `/auth/device` | POST | Login with device ID |
-| `/chat/send` | POST | Send message to AI agent |
-| `/chat/history/search` | POST | Semantic search chat history |
-| `/settings/user` | GET/PUT | Break interval/duration |
-| `/activity/session` | POST | Save completed session |
-| `/tips/recommendation` | POST | Get AI wellness tip |
-| `/music/mood/{mood}` | GET | Get music by mood |
+## Available Scripts
 
-Full API docs: http://localhost:8010/docs
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Vite dev server (browser) |
+| `npm run electron:dev` | Electron desktop app |
+| `npm run electron:dev:watch` | Electron with hot-reload |
+| `npm run build` | Production build |
+| `npm run electron:build:win` | Package as .exe |
+| `npm run electron:build:mac` | Package as .dmg |
+| `npm run electron:build:linux` | Package as AppImage |
 
-## Key Decisions
+---
 
-| Decision | Choice | Why |
-|----------|--------|-----|
-| LLM Provider | OpenRouter | Users bring own key, access to multiple models |
-| Agent Framework | LangGraph | Stateful multi-tool agent loop |
-| Database | MongoDB + JSON fallback | Cloud primary, never crashes without DB |
-| Embeddings | all-MiniLM-L6-v2 | Free, local, no API key needed |
-| Vector Store | ChromaDB | Zero config, embedded, local |
-| Desktop | Electron | Cross-platform, native system access |
+## Documentation
 
-## Testing
+- **[Architecture & Features](DETAIL.md)** — full system design, all features, tech stack, API reference
 
-```bash
-# Backend health check
-curl http://localhost:8010/health
+---
 
-# Semantic search test
-curl -X POST "http://localhost:8010/chat/history/search?token=YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "eye strain tips", "k": 5}'
-```
+## License
+
+MIT
