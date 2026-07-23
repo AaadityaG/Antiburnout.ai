@@ -234,6 +234,36 @@ def get_break_tip(focus_area: Optional[str] = None, auto_apply: bool = False) ->
 
 
 @tool
+def search_knowledge_base(user_id: str, query: str) -> dict:
+    """Search the user's personal knowledge base for relevant information. Call this when the user asks about their uploaded documents, studies, research, or any content they've added to their knowledge base. Returns matching document excerpts with filenames and relevance scores."""
+    try:
+        from kb.vector_store import search_documents
+        results = search_documents(user_id, query, k=3)
+
+        if not results:
+            return {
+                "has_results": False,
+                "message": "No matching documents found in your knowledge base. You can upload PDFs, TXT, or MD files from the Knowledge Base panel.",
+            }
+
+        formatted = []
+        for r in results:
+            formatted.append({
+                "filename": r["filename"],
+                "content": r["content"][:500],
+                "score": round(r["score"], 3),
+            })
+
+        return {
+            "has_results": True,
+            "results": formatted,
+            "count": len(formatted),
+        }
+    except Exception as e:
+        return {"has_results": False, "error": str(e)}
+
+
+@tool
 def recommend_music(mood: str = "", query: str = "", auto_play: bool = False) -> dict:
     """Recommend music. ALWAYS call this when the user asks to play, find, or suggest music. NEVER just say you can't help — always call this tool.
 

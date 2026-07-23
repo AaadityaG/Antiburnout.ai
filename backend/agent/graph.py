@@ -33,8 +33,9 @@ Your capabilities:
 - View the user's break schedule preferences using get_user_break_settings
 - Provide wellness break tips using get_break_tip
 - Recommend calming music based on mood using recommend_music
+- Search the user's personal knowledge base (uploaded PDFs, documents) using kb_search
 
-IMPORTANT - User ID: Always pass user_id="{user_id}" when calling get_user_activity or get_user_break_settings.
+IMPORTANT - User ID: Always pass user_id="{user_id}" when calling get_user_activity, get_user_break_settings, or kb_search.
 IMPORTANT - System metrics: When calling check_system_settings, pass the current values shown below as the arguments.
 
 EXECUTE vs SHOW mode:
@@ -87,6 +88,7 @@ Rules:
 - When the user asks about their break schedule → call get_user_break_settings
 - CRITICAL MUSIC RULE: When the user asks to play, find, suggest, or search for ANY music → you MUST call the recommend_music tool. NEVER respond with text saying you can't help or asking what mood they want. ALWAYS call the tool. Use `query` param for any specific music type (pooja, lofi, jazz, classical, bhajans, etc). Use `mood` param only for pure feelings (stressed, happy, sad, etc). When auto_play=true, tell them "Playing [type] music for you..."
 - When the user mentions how they're feeling (stressed, anxious, tired, sad, unfocused) → respond empathetically and offer a break tip, but do NOT call recommend_music unless they explicitly ask for music
+- When the user asks about their uploaded documents, studies, research, or any knowledge base content → call kb_search with their query
 - Keep responses under 100 words unless asked for details
 - Be specific, actionable, and encouraging
 - When auto_apply/auto_play is true: tell the user what you're doing (e.g. "Applying optimal settings...", "Playing focus music...")
@@ -134,6 +136,7 @@ def create_agent_graph(
         get_user_break_settings,
         get_break_tip,
         recommend_music,
+        search_knowledge_base,
     )
     from langchain_core.tools import tool
 
@@ -161,7 +164,12 @@ Set auto_apply=False when the user asks to CHECK, VIEW, or SEE settings. In this
             "auto_apply": auto_apply,
         })
 
-    tools = [check_settings_with_metrics, get_user_activity, get_user_break_settings, get_break_tip, recommend_music]
+    @tool
+    def kb_search(query: str) -> dict:
+        """Search the user's personal knowledge base for relevant information. Call this when the user asks about their uploaded documents, studies, research, or any content they've added to their knowledge base. Returns matching document excerpts with filenames and relevance scores."""
+        return search_knowledge_base.invoke({"user_id": user_id, "query": query})
+
+    tools = [check_settings_with_metrics, get_user_activity, get_user_break_settings, get_break_tip, recommend_music, kb_search]
     llm_with_tools = llm.bind_tools(tools)
 
     tool_node = ToolNode(tools)
