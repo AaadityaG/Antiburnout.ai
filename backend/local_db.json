@@ -507,6 +507,35 @@
       ],
       "created_at": "2026-07-23 15:08:12.201141",
       "updated_at": "2026-07-23 15:11:38.284219"
+    },
+    {
+      "id": "a10185c8-bbfb-4ae2-a071-4f5b81d3937f",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "hi there",
+          "response": "Hello! How can I assist you today in preventing digital burnout and maintaining your wellness?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-23 15:39:20.376952"
+        },
+        {
+          "message": "can suggest some cool music",
+          "response": "Could you please specify the type of music you're looking for? For example, a genre, artist, or any specific style you have in mind?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-23 15:44:03.515371"
+        },
+        {
+          "message": "anirudh arvind bgm?",
+          "response": "Playing Anirudh Arvind BGM for you. Enjoy the music! \ud83c\udfb5",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-23 15:44:28.328958"
+        }
+      ],
+      "created_at": "2026-07-23 15:39:20.376955",
+      "updated_at": "2026-07-23 15:44:28.328967"
     }
   ],
   "activity": [

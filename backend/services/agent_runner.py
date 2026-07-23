@@ -1,5 +1,8 @@
 from datetime import datetime
 from langchain_core.messages import AIMessage, ToolMessage
+from logger import get_logger
+
+logger = get_logger("agent")
 
 
 async def run_agent(
@@ -26,12 +29,12 @@ async def run_agent(
         system_metrics=system_metrics if system_metrics else None,
     )
 
-    print(f"[AgentRunner] Running agent with model {model}")
+    logger.info("Agent invocation started", model=model, message_length=len(message), history_turns=len(conversation_history or []))
     final_state = await graph.ainvoke(
         {"messages": initial_messages},
         config={"recursion_limit": 10},
     )
-    print(f"[AgentRunner] Agent completed, processed {len(final_state['messages'])} messages")
+    logger.info("Agent invocation completed", model=model, message_count=len(final_state["messages"]))
 
     ai_response = ""
     recommendations = []
@@ -112,6 +115,14 @@ async def run_agent(
     if not ai_response:
         ai_response = "I'm here to help you stay well! What's on your mind?"
 
-    print(f"[AgentRunner] Tools used: {tools_used}, recommendations: {len(recommendations)}, tokens: {token_usage}")
+    logger.info(
+        "Agent run complete",
+        model=model,
+        tools_used=tools_used,
+        recommendation_count=len(recommendations),
+        input_tokens=token_usage.get("input_tokens", 0),
+        output_tokens=token_usage.get("output_tokens", 0),
+        total_tokens=token_usage.get("total_tokens", 0),
+    )
 
     return ai_response, recommendations, tools_used, token_usage

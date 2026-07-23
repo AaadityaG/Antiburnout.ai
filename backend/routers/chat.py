@@ -6,6 +6,9 @@ from db import db, chat_history_db
 from services.encryption import decrypt_api_key
 from services.agent_runner import run_agent
 from datetime import datetime
+from logger import get_logger
+
+logger = get_logger("chat")
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -68,6 +71,13 @@ async def send_message(token: str, request: ChatRequest):
         api_key = decrypt_api_key(provider_config["api_key"], device_id)
 
         print(f"[Chat] Provider: {provider_key}, Model: {provider_config['model']}, Key starts: {api_key[:12]}...")
+        logger.info(
+            "Chat request received",
+            user_id=user_id,
+            model=provider_config["model"],
+            provider=provider_key,
+            has_conversation_history=bool(request.conversation_history),
+        )
 
         system_metrics = {}
         if request.brightness is not None:
@@ -108,7 +118,7 @@ async def send_message(token: str, request: ChatRequest):
                 )
                 session_id = session_doc["id"]
         except Exception as e:
-            print(f"Warning: Failed to save chat history: {e}")
+            logger.warning("Failed to save chat history", user_id=user_id, session_id=session_id, error=str(e))
 
         # Store conversation in vector DB for semantic search.
         # This is separate from the structured chat_history_db —
@@ -158,7 +168,7 @@ async def send_message(token: str, request: ChatRequest):
         except Exception as e:
             # Non-blocking: if vector DB fails, chat still works,
             # just semantic search won't find this conversation
-            print(f"Warning: Failed to store in vector DB: {e}")
+            logger.warning("Failed to store in vector DB", user_id=user_id, session_id=session_id, error=str(e))
 
         # Model configuration info exposed to frontend for display.
         # These values match what's hardcoded in agent/graph.py.
@@ -182,6 +192,5 @@ async def send_message(token: str, request: ChatRequest):
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error("Chat endpoint failed", user_id=user_id if 'user_id' in locals() else None, error_type=type(e).__name__, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")

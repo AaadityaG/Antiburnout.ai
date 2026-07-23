@@ -3,6 +3,9 @@ import chromadb
 from chromadb.config import Settings
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
+from logger import get_logger
+
+logger = get_logger("rag")
 
 # Directory where ChromaDB stores its persistent data (vectors, index files)
 CHROMA_PERSIST_DIR = os.path.join(os.path.dirname(__file__), "chroma_db")
@@ -75,11 +78,13 @@ def get_embeddings():
     """
     global _embedding_model
     if _embedding_model is None:
+        logger.info("Loading embedding model", model="all-MiniLM-L6-v2", device="cpu")
         _embedding_model = HuggingFaceEmbeddings(
             model_name="all-MiniLM-L6-v2",
             model_kwargs={"device": "cpu"},
             encode_kwargs={"normalize_embeddings": True},
         )
+        logger.info("Embedding model loaded successfully")
     return _embedding_model
 
 
@@ -92,10 +97,12 @@ def get_chroma_client():
     global _chroma_client
     if _chroma_client is None:
         os.makedirs(CHROMA_PERSIST_DIR, exist_ok=True)
+        logger.info("Initializing ChromaDB client", path=CHROMA_PERSIST_DIR)
         _chroma_client = chromadb.PersistentClient(
             path=CHROMA_PERSIST_DIR,
             settings=Settings(anonymized_telemetry=False),
         )
+        logger.info("ChromaDB client initialized")
     return _chroma_client
 
 
@@ -111,6 +118,8 @@ def get_user_collection(user_id: str) -> Chroma:
     client = get_chroma_client()
     safe_id = user_id.replace("-", "_")
     collection_name = f"chat_history_{safe_id}"
+
+    logger.debug("Accessing user collection", user_id=user_id, collection=collection_name)
 
     return Chroma(
         client=client,

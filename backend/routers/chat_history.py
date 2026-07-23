@@ -3,6 +3,9 @@ from pydantic import BaseModel
 from typing import Optional, List
 from auth import verify_token
 from db import db, chat_history_db
+from logger import get_logger
+
+logger = get_logger("chat_history")
 
 router = APIRouter(prefix="/chat/history", tags=["Chat History"])
 
@@ -62,9 +65,7 @@ async def get_chat_history(token: str, limit: int = 20):
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
-        print(f"Error in get_chat_history: {str(e)}")
-        traceback.print_exc()
+        logger.error("Failed to get chat history", user_id=user_id if 'user_id' in locals() else None, error_type=type(e).__name__, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get chat history: {str(e)}")
 
 @router.post("/search", response_model=SearchResponse)
@@ -84,6 +85,8 @@ async def search_chat_history(token: str, request: SearchRequest):
             raise HTTPException(status_code=401, detail="Invalid token")
 
         user_id = payload.get("sub")
+
+        logger.info("Semantic search request", user_id=user_id, query=request.query, k=request.k)
 
         from rag.vector_store import get_user_collection
         collection = get_user_collection(user_id)
@@ -141,6 +144,8 @@ async def search_chat_history(token: str, request: SearchRequest):
             if len(formatted) >= (request.k or 2):
                 break
 
+        logger.info("Search completed", user_id=user_id, result_count=len(formatted), top_score=formatted[0]["score"] if formatted else None)
+
         return SearchResponse(
             query=request.query,
             results=formatted,
@@ -149,9 +154,7 @@ async def search_chat_history(token: str, request: SearchRequest):
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
-        print(f"Error in search_chat_history: {str(e)}")
-        traceback.print_exc()
+        logger.error("Failed to search chat history", user_id=user_id if 'user_id' in locals() else None, query=request.query, error_type=type(e).__name__, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to search chat history: {str(e)}")
 
 @router.get("/{session_id}", response_model=SessionDetailResponse)
@@ -172,9 +175,7 @@ async def get_session_messages(token: str, session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
-        print(f"Error in get_session_messages: {str(e)}")
-        traceback.print_exc()
+        logger.error("Failed to get session messages", user_id=user_id if 'user_id' in locals() else None, session_id=session_id, error_type=type(e).__name__, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get session: {str(e)}")
 
 @router.delete("/clear", response_model=ClearHistoryResponse)
