@@ -36,6 +36,19 @@ async def run_agent(
     ai_response = ""
     recommendations = []
     tools_used = []
+    token_usage = {}
+
+    # Extract token usage from the last AIMessage's usage_metadata.
+    # LangChain populates this automatically when the LLM returns usage info.
+    # Structure: {"input_tokens": int, "output_tokens": int, "total_tokens": int}
+    for msg in reversed(final_state["messages"]):
+        if isinstance(msg, AIMessage) and hasattr(msg, "usage_metadata") and msg.usage_metadata:
+            token_usage = {
+                "input_tokens": msg.usage_metadata.get("input_tokens", 0),
+                "output_tokens": msg.usage_metadata.get("output_tokens", 0),
+                "total_tokens": msg.usage_metadata.get("total_tokens", 0),
+            }
+            break
 
     for msg in final_state["messages"]:
         if isinstance(msg, AIMessage):
@@ -99,6 +112,6 @@ async def run_agent(
     if not ai_response:
         ai_response = "I'm here to help you stay well! What's on your mind?"
 
-    print(f"[AgentRunner] Tools used: {tools_used}, recommendations: {len(recommendations)}")
+    print(f"[AgentRunner] Tools used: {tools_used}, recommendations: {len(recommendations)}, tokens: {token_usage}")
 
-    return ai_response, recommendations, tools_used
+    return ai_response, recommendations, tools_used, token_usage

@@ -32,6 +32,8 @@ class ChatResponse(BaseModel):
     session_id: str
     recommendations: Optional[List[dict]] = []
     tools_used: Optional[List[str]] = []
+    token_usage: Optional[dict] = None
+    model_config_info: Optional[dict] = None
 
 
 @router.post("/send", response_model=ChatResponse)
@@ -75,7 +77,7 @@ async def send_message(token: str, request: ChatRequest):
         if request.local_hour is not None:
             system_metrics["local_hour"] = request.local_hour
 
-        ai_response, recommendations, tools_used = await run_agent(
+        ai_response, recommendations, tools_used, token_usage = await run_agent(
             api_key=api_key,
             model=provider_config["model"],
             user=user,
@@ -158,6 +160,14 @@ async def send_message(token: str, request: ChatRequest):
             # just semantic search won't find this conversation
             print(f"Warning: Failed to store in vector DB: {e}")
 
+        # Model configuration info exposed to frontend for display.
+        # These values match what's hardcoded in agent/graph.py.
+        model_config_info = {
+            "max_tokens": 500,
+            "temperature": 0.7,
+            "context_window": 4096,  # approximate for most OpenRouter models
+        }
+
         return ChatResponse(
             response=ai_response,
             model=provider_config["model"],
@@ -165,6 +175,8 @@ async def send_message(token: str, request: ChatRequest):
             session_id=session_id,
             recommendations=recommendations,
             tools_used=tools_used,
+            token_usage=token_usage if token_usage else None,
+            model_config_info=model_config_info,
         )
 
     except HTTPException:

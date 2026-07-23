@@ -29,7 +29,7 @@
   ],
   "settings": {
     "97d95d5c-daf6-4371-bea7-2ccbf4524d5f": {
-      "break_interval": 60,
+      "break_interval": 1800,
       "break_duration": 299,
       "auto_start": true
     }
@@ -485,6 +485,28 @@
       ],
       "created_at": "2026-07-23 13:42:28.694929",
       "updated_at": "2026-07-23 13:42:28.694934"
+    },
+    {
+      "id": "f2be6205-565a-4226-9929-43e908ee1795",
+      "user_id": "97d95d5c-daf6-4371-bea7-2ccbf4524d5f",
+      "messages": [
+        {
+          "message": "hi there",
+          "response": "Hello! How can I assist you today in preventing digital burnout?",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-23 15:08:12.201130"
+        },
+        {
+          "message": "can you tell me 4 exercieses for eyes",
+          "response": "Here are four eye exercises you can do to relieve strain:\n\n1. **Palming**: Rub your palms together to generate heat, then gently cup your palms over your closed eyes for a minute, relaxing your eye muscles.\n\n2. **20-20-20 Rule**: Every 20 minutes, look at something 20 feet away for at least 20 seconds to reduce eye strain.\n\n3. **Eye Rolling**: Close your eyes and roll them in a circular motion for a few seconds, then reverse the direction.\n\n4. **Focus Change**: Hold your finger or a pen about 10 inches away, focus on it, then shift your gaze to something further away for a few seconds, and back again.\n\nThese exercises can help ease eye fatigue, especially during long screen sessions.",
+          "model": "openai/gpt-4o-mini",
+          "provider_key": "model_1",
+          "timestamp": "2026-07-23 15:11:38.284209"
+        }
+      ],
+      "created_at": "2026-07-23 15:08:12.201141",
+      "updated_at": "2026-07-23 15:11:38.284219"
     }
   ],
   "activity": [
@@ -790,12 +812,40 @@
           "completed": false,
           "skipped": true,
           "timestamp": "2026-07-23 14:46:02.558482"
+        },
+        {
+          "session_duration": 573,
+          "target_duration": 60,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-23 14:56:36.246551"
+        },
+        {
+          "session_duration": 597,
+          "target_duration": 60,
+          "completed": false,
+          "skipped": true,
+          "timestamp": "2026-07-23 15:07:33.992685"
+        },
+        {
+          "session_duration": 60,
+          "target_duration": 60,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-23 15:09:02.911711"
+        },
+        {
+          "session_duration": 60,
+          "target_duration": 60,
+          "completed": true,
+          "skipped": false,
+          "timestamp": "2026-07-23 15:13:36.440847"
         }
       ],
-      "total_session_duration": 3400,
-      "total_breaks_taken": 6,
-      "total_breaks_skipped": 6,
-      "last_updated": "2026-07-23 14:46:02.558486"
+      "total_session_duration": 4690,
+      "total_breaks_taken": 10,
+      "total_breaks_skipped": 8,
+      "last_updated": "2026-07-23 15:13:36.440863"
     }
   ]
 }

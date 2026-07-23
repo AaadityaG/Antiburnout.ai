@@ -22,7 +22,15 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
   const { searchResults, isSearching } = useSelector((state: RootState) => state.chat)
   const user = useSelector((state: RootState) => state.auth.user)
   
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; recommendations?: any[]; tools_used?: string[] }>>([])
+  const [messages, setMessages] = useState<Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    recommendations?: any[];
+    tools_used?: string[];
+    token_usage?: { input_tokens: number; output_tokens: number; total_tokens: number };
+    model_config_info?: { max_tokens: number; temperature: number; context_window: number };
+    model?: string;
+  }>>([])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [selectedModelKey, setSelectedModelKey] = useState<string>('')
@@ -229,7 +237,10 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
         role: 'assistant',
         content: response.data.response,
         recommendations: response.data.recommendations || [],
-        tools_used: response.data.tools_used || []
+        tools_used: response.data.tools_used || [],
+        token_usage: response.data.token_usage || undefined,
+        model_config_info: response.data.model_config_info || undefined,
+        model: response.data.model || undefined,
       }])
 
       if (response.data.session_id && !activeSessionId) {
@@ -606,6 +617,30 @@ function ChatOverlay({ isOpen, onClose, onPlayMusic }: ChatOverlayProps) {
                                 {!['check_system_settings', 'get_user_activity', 'get_user_break_settings', 'get_break_tip', 'recommend_music'].includes(tool) && `🔧 ${tool}`}
                               </span>
                             ))}
+                          </div>
+                        )}
+
+                        {/* Token usage and model info */}
+                        {msg.token_usage && msg.role === 'assistant' && (
+                          <div className="mt-2 pt-2 border-t border-white/[0.04]">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/30">
+                              {msg.model && (
+                                <span className="font-mono">{msg.model.split('/').pop()}</span>
+                              )}
+                              <span>
+                                {msg.token_usage.input_tokens} in / {msg.token_usage.output_tokens} out
+                              </span>
+                              {msg.model_config_info && (
+                                <span className="opacity-60">
+                                  max {msg.model_config_info.max_tokens} · temp {msg.model_config_info.temperature}
+                                </span>
+                              )}
+                              {msg.model_config_info && msg.model_config_info.context_window > 0 && (
+                                <span className="opacity-60">
+                                  {Math.round((msg.token_usage.total_tokens / msg.model_config_info.context_window) * 100)}% context
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
                         
